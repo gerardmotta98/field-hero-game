@@ -185,8 +185,9 @@ const WORLD_DATA = {
   }
 };
 
-// Variable global: mundo actual
-let currentWorld = 1;
+// Variables globales de sesión
+let currentWorld  = 1;
+let playerHealth  = 100;   // persiste entre mundos; se resetea al volver al M1
 
 // ================================================================
 //  FIELD HERO — La Ruta del Técnico
@@ -582,6 +583,7 @@ class TitleScene extends Phaser.Scene {
         this.time.delayedCall(200, () => {
             this.input.keyboard.once('keydown-ENTER', () => {
                 currentWorld = 1;
+                playerHealth = 100;
                 this.scene.start('BriefingScene');
             });
         });
@@ -667,7 +669,7 @@ class GameScene extends Phaser.Scene {
         // --------------------------------------------------------
         //  ESTADO DEL NIVEL
         // --------------------------------------------------------
-        this.health           = 100;
+        this.health           = playerHealth;   // persiste entre mundos
         this.leadsCollected   = 0;   // leads con respuesta correcta
         this.leadsAttempted   = 0;   // leads interactuados (correcto O fallado)
         this.leadsCorrect     = 0;   // alias explícito para hit rate
@@ -1200,7 +1202,7 @@ class GameScene extends Phaser.Scene {
             this.player.setVelocityX(0);
             if (onGround) this.player.play('idle', true);
         }
-        if (doJump && onGround) this.player.setVelocityY(-450);
+        if (doJump && onGround) this.player.setVelocityY(-416);
 
         // — Caída por agujero —
         if (this.player.y > 460 && !this.levelEnded) {
@@ -1230,7 +1232,9 @@ class GameScene extends Phaser.Scene {
             });
             this.time.delayedCall(300, () => {
                 this.input.keyboard.once('keydown-ENTER', () => {
-                    this.scene.restart();
+                    playerHealth = 100;
+                    currentWorld = 1;
+                    this.scene.start('BriefingScene');
                 });
             });
             this.levelEnded = true;
@@ -1418,13 +1422,18 @@ class SummaryScene extends Phaser.Scene {
             this.input.keyboard.once('keydown-ENTER', () => {
                 if (aprobado) {
                     if (currentWorld < 3) {
+                        playerHealth = data.health;   // llevar la vida al siguiente mundo
                         currentWorld++;
                         this.scene.start('BriefingScene');
                     } else {
+                        playerHealth = 100;
                         this.scene.start('TitleScene'); // iteración 3: irá a BossScene
                     }
                 } else {
-                    this.scene.start('BriefingScene'); // reinicia el mismo mundo
+                    // Fallo (hit rate < 75% o tiempo agotado) → reinicio desde Mundo 1
+                    playerHealth = 100;
+                    currentWorld = 1;
+                    this.scene.start('BriefingScene');
                 }
             });
         });
