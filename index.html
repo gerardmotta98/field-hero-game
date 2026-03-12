@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Field Hero — La Ruta del Técnico</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a14; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        #game { image-rendering: pixelated; }
+    </style>
+</head>
+<body>
+<div id="game"></div>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+<script>
+'use strict';
+
+// ================================================================
+//  FIELD HERO — La Ruta del Técnico
+//  Iteración 1  |  F2O Training Game — Schneider Electric
+//
+//  Escenas:
+//    BootScene     — genera todas las texturas por código
+//    TitleScene    — pantalla de título
+//    BriefingScene — briefing del Mundo 1
+//    GameScene     — nivel Subestación LV (jugador + plataformas)
+//
+//  Próximas iteraciones:
+//    Leads, Quiz, HUD, SummaryScene
+// ================================================================
+
+
+// ================================================================
+//  BOOT SCENE
+//  Genera todas las texturas programáticamente y registra
+//  animaciones globales. Al terminar lanza TitleScene.
+// ================================================================
+class BootScene extends Phaser.Scene {
+    constructor() { super({ key: 'BootScene' }); }
+
+    create() {
+
+        // --- Utilidades de dibujo ---------------------------------
+
+        /** Rellena un rectángulo en un CanvasRenderingContext2D */
+        const r = (ctx, x, y, w, h, color) => {
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, w, h);
+        };
+
+        /** Crea CanvasTexture limpia; devuelve { tex, ctx } */
+        const mkTex = (key, w, h) => {
+            const tex = this.textures.createCanvas(key, w, h);
+            const ctx = tex.getContext();
+            ctx.clearRect(0, 0, w, h);
+            return { tex, ctx };
+        };
+
+        // --- TÉCNICO (función base compartida) --------------------
+        //  legLX / legRX: X de inicio de pierna izq / der (8px ancho)
+        const drawTechnico = (ctx, legLX, legRX) => {
+            // Casco verde SE (rows 0-5)
+            r(ctx,  8,  0, 16,  1, '#2a9e40');   // cima oscura
+            r(ctx,  6,  1, 20,  5, '#3DCD58');   // cuerpo casco
+            r(ctx,  5,  5, 22,  1, '#2a9e40');   // visera
+
+            // Cara piel (rows 6-11)
+            r(ctx,  8,  6, 16,  6, '#f0c8a0');
+            r(ctx, 10,  8,  3,  2, '#1a1a1a');   // ojo izq
+            r(ctx, 19,  8,  3,  2, '#1a1a1a');   // ojo der
+            r(ctx, 12, 11,  8,  1, '#c8a080');   // boca
+
+            // Cuello (rows 12-13)
+            r(ctx, 13, 12,  6,  2, '#f0c8a0');
+
+            // Chaleco naranja (rows 14-23)
+            r(ctx,  4, 14, 24, 10, '#f0a030');
+            r(ctx,  4, 16, 24,  2, '#3DCD58');   // franja reflectante 1
+            r(ctx,  4, 20, 24,  2, '#3DCD58');   // franja reflectante 2
+            r(ctx,  1, 14,  3,  8, '#f0a030');   // brazo izq
+            r(ctx, 28, 14,  3,  8, '#f0a030');   // brazo der
+            r(ctx,  1, 21,  3,  2, '#7a7a8e');   // guante izq
+            r(ctx, 28, 21,  3,  2, '#7a7a8e');   // guante der
+
+            // Pantalón azul (rows 24-29)
+            r(ctx, legLX, 24,  8,  6, '#4080d0');
+            r(ctx, legRX, 24,  8,  6, '#4080d0');
+
+            // Botas marrón (rows 30-31, 1px más anchas)
+            r(ctx, legLX - 1, 30, 10,  2, '#8b6040');
+            r(ctx, legRX - 1, 30, 10,  2, '#8b6040');
+        };
+
+        // tech_stand — posición neutra
+        { const { tex, ctx } = mkTex('tech_stand', 32, 32); drawTechnico(ctx, 6, 18); tex.refresh(); }
+
+        // tech_walk1 — pierna izquierda adelantada
+        { const { tex, ctx } = mkTex('tech_walk1', 32, 32); drawTechnico(ctx, 4, 20); tex.refresh(); }
+
+        // tech_walk2 — pierna derecha adelantada
+        { const { tex, ctx } = mkTex('tech_walk2', 32, 32); drawTechnico(ctx, 8, 16); tex.refresh(); }
+
+        // --- LEAD VÁLIDO — bombilla verde 16x16 ------------------
+        {
+            const { tex, ctx } = mkTex('lead_valid', 16, 16);
+            r(ctx,  4,  0,  8,  2, '#6de882');
+            r(ctx,  2,  2, 12,  2, '#6de882');
+            r(ctx,  1,  4, 14,  5, '#6de882');
+            r(ctx,  2,  9, 12,  2, '#6de882');
+            r(ctx,  4, 11,  8,  2, '#6de882');
+            r(ctx,  5, 12,  6,  1, '#f0a030');  // casquillo
+            r(ctx,  4, 13,  8,  1, '#f0a030');
+            r(ctx,  5, 14,  6,  1, '#f0a030');
+            r(ctx,  3,  3,  3,  1, '#ffffff');  // reflejo
+            r(ctx,  2,  4,  2,  2, '#ffffff');
+            r(ctx,  6,  4,  4,  4, '#b0f5c0');  // brillo central
+            tex.refresh();
+        }
+
+        // --- LEAD INVÁLIDO — esfera roja 16x16 con X blanca ------
+        {
+            const { tex, ctx } = mkTex('lead_invalid', 16, 16);
+            r(ctx,  4,  0,  8,  2, '#e84057');
+            r(ctx,  2,  2, 12, 12, '#e84057');
+            r(ctx,  4, 14,  8,  2, '#e84057');
+            r(ctx,  0,  4, 16,  8, '#e84057');
+            for (let i = 0; i < 7; i++) r(ctx, 4 + i, 4 + i, 2, 2, '#ffffff');  // diagonal \
+            for (let i = 0; i < 7; i++) r(ctx, 10 - i, 4 + i, 2, 2, '#ffffff'); // diagonal /
+            tex.refresh();
+        }
+
+        // --- TILE SUELO — baldosa industrial 32x32 ---------------
+        {
+            const { tex, ctx } = mkTex('tile_floor', 32, 32);
+            r(ctx,  0,  0, 32, 32, '#4a4a5e');  // base
+            r(ctx,  0,  0, 32,  1, '#3a3a4a');  // bordes
+            r(ctx,  0,  0,  1, 32, '#3a3a4a');
+            r(ctx, 31,  0,  1, 32, '#3a3a4a');
+            r(ctx,  0, 31, 32,  1, '#3a3a4a');
+            r(ctx,  0,  0, 32,  3, '#f0d020');  // franja seg. amarilla
+            tex.refresh();
+        }
+
+        // --- TILE PLATAFORMA — pasarela metálica 32x32 -----------
+        {
+            const { tex, ctx } = mkTex('tile_platform', 32, 32);
+            r(ctx,  0,  0, 32, 32, '#8a9aaa');
+            r(ctx,  0,  6, 32,  1, '#7a8a9a');  // líneas metálicas
+            r(ctx,  0, 12, 32,  1, '#7a8a9a');
+            r(ctx,  0, 18, 32,  1, '#7a8a9a');
+            r(ctx,  0, 24, 32,  1, '#7a8a9a');
+            r(ctx,  0,  0, 32,  3, '#6a7a8a');  // refuerzo superior
+            r(ctx,  0, 30, 32,  2, '#5a6a7a');  // borde inferior
+            tex.refresh();
+        }
+
+        // --- CUADRO ELÉCTRICO NORMAL — 48x64 ---------------------
+        {
+            const { tex, ctx } = mkTex('equip_panel', 48, 64);
+            r(ctx,  0,  0, 48, 64, '#5a6a7a');
+            r(ctx,  0,  0, 48,  2, '#3a4a5a');  // marcos
+            r(ctx,  0,  0,  2, 64, '#3a4a5a');
+            r(ctx, 46,  0,  2, 64, '#3a4a5a');
+            r(ctx,  0, 62, 48,  2, '#3a4a5a');
+            r(ctx, 23,  8,  2, 52, '#4a5a6a');  // línea central (puerta)
+            r(ctx,  7,  5,  5,  4, '#3DCD58');  // LED verde
+            r(ctx, 21,  5,  5,  4, '#e84057');  // LED rojo
+            r(ctx, 36,  5,  5,  4, '#f0a030');  // LED naranja
+            // Breakers (2 columnas x 3 filas)
+            [16, 28, 40].forEach(y => {
+                r(ctx,  7, y, 13,  8, '#1a1a2e');
+                r(ctx, 27, y, 13,  8, '#1a1a2e');
+                r(ctx, 11, y + 1,  3,  6, '#7a7a8e');
+                r(ctx, 31, y + 1,  3,  6, '#7a7a8e');
+            });
+            tex.refresh();
+        }
+
+        // --- CUADRO CON ÓXIDO (Quiz 1) — 48x64 ------------------
+        {
+            const { tex, ctx } = mkTex('equip_panel_rust', 48, 64);
+            r(ctx,  0,  0, 48, 64, '#5a6a7a');
+            r(ctx,  0,  0, 48,  2, '#3a4a5a');
+            r(ctx,  0,  0,  2, 64, '#3a4a5a');
+            r(ctx, 46,  0,  2, 64, '#3a4a5a');
+            r(ctx,  0, 62, 48,  2, '#3a4a5a');
+            r(ctx, 23,  8,  2, 52, '#4a5a6a');
+            r(ctx,  7,  5,  5,  4, '#f0a030');  // LEDs de alerta
+            r(ctx, 21,  5,  5,  4, '#e84057');
+            r(ctx, 36,  5,  5,  4, '#e84057');
+            [16, 28, 40].forEach(y => {
+                r(ctx,  7, y, 13,  8, '#1a1a2e');
+                r(ctx, 27, y, 13,  8, '#1a1a2e');
+                r(ctx, 11, y + 1,  3,  6, '#7a7a8e');
+                r(ctx, 31, y + 1,  3,  6, '#7a7a8e');
+            });
+            // Manchas de óxido
+            r(ctx,  4, 18,  9,  6, '#8b6040');
+            r(ctx, 28, 32, 12,  9, '#8b6040');
+            r(ctx, 13, 48,  8, 10, '#8b6040');
+            r(ctx, 36, 10,  7,  8, '#8b6040');
+            r(ctx,  5, 20,  4,  2, '#6a4020');
+            r(ctx, 30, 35,  6,  3, '#6a4020');
+            tex.refresh();
+        }
+
+        // --- TORRE UPS — 36x64 -----------------------------------
+        {
+            const { tex, ctx } = mkTex('equip_ups', 36, 64);
+            r(ctx,  0,  0, 36, 64, '#3a4a5a');
+            r(ctx,  0,  0, 36,  2, '#2a3a4a');
+            r(ctx,  0,  0,  2, 64, '#2a3a4a');
+            r(ctx, 34,  0,  2, 64, '#2a3a4a');
+            r(ctx,  0, 62, 36,  2, '#2a3a4a');
+            r(ctx,  4,  4, 28, 16, '#1a2a1a');  // pantalla fondo
+            r(ctx,  5,  5, 26, 14, '#3DCD58');  // pantalla brillo
+            r(ctx,  6,  6, 24, 12, '#2a9e40');  // pantalla interior
+            r(ctx,  8,  8,  5,  8, '#6de882');  // chars simulados
+            r(ctx, 15,  8,  5,  8, '#6de882');
+            r(ctx, 22,  8,  5,  8, '#6de882');
+            for (let gy = 24; gy < 56; gy += 6) r(ctx, 4, gy, 28, 3, '#2a3a4a');  // rejillas
+            r(ctx, 15, 56,  6,  4, '#3DCD58');  // LED estado
+            tex.refresh();
+        }
+
+        // --- CHARCO DE AGUA — peligro 48x12 ----------------------
+        {
+            const { tex, ctx } = mkTex('hazard_water', 48, 12);
+            ctx.globalAlpha = 0.55;
+            r(ctx,  4,  1, 40, 10, '#4488cc');
+            r(ctx,  0,  3, 48,  6, '#4488cc');
+            r(ctx,  8,  0, 32, 12, '#4488cc');
+            ctx.globalAlpha = 0.65;
+            r(ctx, 10,  2, 16,  2, '#aaddff');  // reflejo
+            r(ctx, 14,  2,  8,  1, '#ffffff');
+            ctx.globalAlpha = 1.0;
+            tex.refresh();
+        }
+
+        // --- Animaciones globales --------------------------------
+        this.anims.create({
+            key: 'idle',
+            frames: [{ key: 'tech_stand' }],
+            frameRate: 1,
+            repeat: -1
+        });
+        this.anims.create({
+            key: 'walk',
+            frames: [{ key: 'tech_walk1' }, { key: 'tech_walk2' }],
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.scene.start('TitleScene');
+    }
+}
+
+
+// ================================================================
+//  TITLE SCENE
+//  Pantalla de título. ENTER → BriefingScene
+// ================================================================
+class TitleScene extends Phaser.Scene {
+    constructor() { super({ key: 'TitleScene' }); }
+
+    create() {
+        const W = this.scale.width;
+        const H = this.scale.height;
+        const FONT = 'Courier New, Courier, monospace';
+
+        this.cameras.main.setBackgroundColor('#1a1a2e');
+
+        // Línea decorativa superior
+        const g = this.add.graphics();
+        g.lineStyle(2, 0x3DCD58, 0.5);
+        g.lineBetween(60, H * 0.14, W - 60, H * 0.14);
+
+        this.add.text(W / 2, H * 0.22, '⚡ FIELD HERO ⚡', {
+            fontSize: '28px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        this.add.text(W / 2, H * 0.34, 'La Ruta del Técnico', {
+            fontSize: '16px', fill: '#e8e8f0', fontFamily: FONT
+        }).setOrigin(0.5);
+
+        this.add.text(W / 2, H * 0.44, 'F2O Training Game — Schneider Electric', {
+            fontSize: '12px', fill: '#7a7a8e', fontFamily: FONT
+        }).setOrigin(0.5);
+
+        const g2 = this.add.graphics();
+        g2.lineStyle(1, 0x2d2d44, 0.9);
+        g2.lineBetween(80, H * 0.52, W - 80, H * 0.52);
+
+        const blink = this.add.text(W / 2, H * 0.62, '▶  Pulsa ENTER para empezar', {
+            fontSize: '14px', fill: '#6de882', fontFamily: FONT
+        }).setOrigin(0.5);
+        this.tweens.add({ targets: blink, alpha: 0.1, duration: 550, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+        this.add.text(W / 2, H * 0.80, '←→  Mover   |   ESPACIO  Saltar   |   E  Inspeccionar', {
+            fontSize: '11px', fill: '#7a7a8e', fontFamily: FONT
+        }).setOrigin(0.5);
+
+        this.add.text(W - 10, H - 8, 'v1.0 — Iteración 1', {
+            fontSize: '9px', fill: '#3a3a5a', fontFamily: FONT
+        }).setOrigin(1, 1);
+
+        // Delay para evitar que la tecla retenida dispare la siguiente escena
+        this.time.delayedCall(200, () => {
+            this.input.keyboard.once('keydown-ENTER', () => {
+                this.scene.start('BriefingScene', { worldId: 1 });
+            });
+        });
+    }
+}
+
+
+// ================================================================
+//  BRIEFING SCENE
+//  Muestra el contexto del mundo antes de la misión.
+//  Recibe { worldId }. ENTER → GameScene
+// ================================================================
+class BriefingScene extends Phaser.Scene {
+    constructor() { super({ key: 'BriefingScene' }); }
+
+    create(data) {
+        const W = this.scale.width;
+        const H = this.scale.height;
+        const FONT = 'Courier New, Courier, monospace';
+
+        this.cameras.main.setBackgroundColor('#1a1a2e');
+
+        // Título
+        this.add.text(W / 2, H * 0.10, 'MUNDO 1: SUBESTACIÓN LV', {
+            fontSize: '22px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // Línea separadora
+        const g = this.add.graphics();
+        g.lineStyle(1, 0x3DCD58, 0.35);
+        g.lineBetween(60, H * 0.19, W - 60, H * 0.19);
+
+        // Descripción
+        this.add.text(W / 2, H * 0.31,
+            'Tu primera visita del día. Una subestación de baja tensión\n' +
+            'con varios cuadros eléctricos. Completa tu Work Order\n' +
+            'y detecta oportunidades de negocio.', {
+            fontSize: '13px', fill: '#e8e8f0', fontFamily: FONT,
+            align: 'center', lineSpacing: 7
+        }).setOrigin(0.5);
+
+        // Caja consejo con borde verde
+        const bx = W * 0.13, by = H * 0.50, bw = W * 0.74, bh = 46;
+        const gb = this.add.graphics();
+        gb.fillStyle(0x0e1020, 0.92);
+        gb.fillRect(bx, by, bw, bh);
+        gb.lineStyle(2, 0x3DCD58, 1);
+        gb.strokeRect(bx, by, bw, bh);
+        this.add.text(W / 2, by + bh / 2,
+            '💡  Leads válidos = VERDE.  Evita las trampas ROJAS.', {
+            fontSize: '11px', fill: '#6de882', fontFamily: FONT, align: 'center'
+        }).setOrigin(0.5);
+
+        // Objetivo
+        this.add.text(W / 2, H * 0.72,
+            'Objetivo: Encuentra 4 leads válidos. Tienes 5 minutos.', {
+            fontSize: '12px', fill: '#e8e8f0', fontFamily: FONT
+        }).setOrigin(0.5);
+
+        // Texto parpadeante
+        const blink = this.add.text(W / 2, H * 0.86, '▶  Pulsa ENTER para empezar la misión', {
+            fontSize: '13px', fill: '#6de882', fontFamily: FONT
+        }).setOrigin(0.5);
+        this.tweens.add({ targets: blink, alpha: 0.15, duration: 550, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+        this.time.delayedCall(200, () => {
+            this.input.keyboard.once('keydown-ENTER', () => {
+                this.scene.start('GameScene', { worldId: data.worldId });
+            });
+        });
+    }
+}
+
+
+// ================================================================
+//  GAME SCENE — Mundo 1: Subestación LV
+//  Jugador, plataformas, HUD y peligros activos.
+//  Próximas iteraciones: leads válidos/inválidos, QuizScene.
+// ================================================================
+class GameScene extends Phaser.Scene {
+    constructor() { super({ key: 'GameScene' }); }
+
+    create() {
+        const WORLD_W  = 2400;
+        const WORLD_H  = 650;        // extendido hacia abajo para los agujeros
+        const FLOOR_Y  = 418;        // Y del borde superior del suelo
+        const FLOOR_CY = FLOOR_Y + 16; // centro Y de tiles de suelo (32px)
+        const FONT     = 'Courier New, Courier, monospace';
+
+        // Agujeros en el suelo: rangos de X donde NO se crean tiles
+        // Cada entrada cubre 3 tiles = 96px
+        const HOLES = [
+            { x1: 1120, x2: 1216 },   // Hole 1 — tras Platform A
+            { x1: 1728, x2: 1824 },   // Hole 2 — antes del Lead 4 final
+        ];
+        const inHole = (x) => HOLES.some(h => x >= h.x1 && x < h.x2);
+
+        // --------------------------------------------------------
+        //  ESTADO DEL NIVEL
+        // --------------------------------------------------------
+        this.health           = 100;
+        this.leadsCollected   = 0;
+        this.score            = 0;
+        this.bonusEuros       = 0;
+        this.timeLeft         = 300;   // 5 minutos en segundos
+        this.levelEnded       = false;
+        this.inWater          = false;
+        this.invalidsTouched  = 0;
+
+        // --- Bounds del mundo físico (ampliado en altura para agujeros) ---
+        this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
+
+        // --------------------------------------------------------
+        //  FONDO — pared industrial
+        // --------------------------------------------------------
+        const bg = this.add.graphics();
+        bg.fillStyle(0x2a2a3a);
+        bg.fillRect(0, 0, WORLD_W, FLOOR_Y);
+        // Textura de pared: líneas horizontales
+        bg.lineStyle(1, 0x343444, 0.7);
+        for (let y = 48; y < FLOOR_Y; y += 48) bg.lineBetween(0, y, WORLD_W, y);
+        // Juntas verticales de paneles
+        bg.lineStyle(1, 0x222232, 0.5);
+        for (let x = 160; x < WORLD_W; x += 160) bg.lineBetween(x, 0, x, FLOOR_Y);
+        // Bandeja de cables en el techo
+        bg.fillStyle(0x3a4a5a);
+        bg.fillRect(0, 4, WORLD_W, 18);
+        bg.lineStyle(3, 0x4080d0, 1.0); bg.lineBetween(0,  8, WORLD_W,  8);
+        bg.lineStyle(3, 0xe84057, 1.0); bg.lineBetween(0, 12, WORLD_W, 12);
+        bg.lineStyle(3, 0xf0d020, 1.0); bg.lineBetween(0, 16, WORLD_W, 16);
+        bg.lineStyle(3, 0x6de882, 1.0); bg.lineBetween(0, 20, WORLD_W, 20);
+        // Franja amarilla de seguridad (con huecos en los agujeros)
+        bg.fillStyle(0xf0d020);
+        let segX = 0;
+        HOLES.forEach(h => {
+            bg.fillRect(segX, 416, h.x1 - segX, 2);
+            // Borde de peligro en los agujeros: franja roja/amarilla
+            bg.fillStyle(0xe84057);
+            bg.fillRect(h.x1 - 4, 416, 4, 8);
+            bg.fillRect(h.x2,     416, 4, 8);
+            bg.fillStyle(0xf0d020);
+            segX = h.x2;
+        });
+        bg.fillRect(segX, 416, WORLD_W - segX, 2);
+
+        // --------------------------------------------------------
+        //  SUELO — tile_floor omitiendo agujeros
+        // --------------------------------------------------------
+        this.floorGroup = this.physics.add.staticGroup();
+        for (let x = 0; x < WORLD_W; x += 32) {
+            if (!inHole(x)) {
+                this.floorGroup.create(x + 16, FLOOR_CY, 'tile_floor');
+            }
+        }
+
+        // --------------------------------------------------------
+        //  PLATAFORMAS
+        // --------------------------------------------------------
+        this.platformGroup = this.physics.add.staticGroup();
+
+        // — Plataforma 1 (existente) x=400-608, top y=300 —
+        for (let x = 400; x < 608; x += 32) {
+            this.platformGroup.create(x + 16, 316, 'tile_platform');
+        }
+        this.platformGroup.create(384, 348, 'tile_platform');  // escalón
+
+        // — Plataforma A (nueva) x=900-1092, top y=310 —
+        //   Accesible desde el suelo con un salto
+        for (let x = 900; x < 1092; x += 32) {
+            this.platformGroup.create(x + 16, 326, 'tile_platform');
+        }
+        this.platformGroup.create(876, 358, 'tile_platform');  // escalón acceso
+
+        // — Plataforma B (nueva) x=1350-1510, top y=280 —
+        //   Solo accesible saltando desde la Plataforma A
+        for (let x = 1350; x < 1510; x += 32) {
+            this.platformGroup.create(x + 16, 296, 'tile_platform');
+        }
+        // Escalones de acceso a B desde el suelo (requieren llegar post-Hole1)
+        this.platformGroup.create(1270, 356, 'tile_platform');
+        this.platformGroup.create(1310, 322, 'tile_platform');
+
+        // --------------------------------------------------------
+        //  EQUIPOS — sprites decorativos sobre el suelo
+        //  centro Y = FLOOR_Y - mitad_altura (64px → -32)
+        // --------------------------------------------------------
+        const EQ_Y = FLOOR_Y - 32;
+        this.add.image(300,  EQ_Y, 'equip_panel');           // deco
+        this.add.image(500,  EQ_Y, 'equip_panel_rust');      // Quiz 1
+        this.add.image(750,  EQ_Y, 'equip_panel');           // Quiz 2
+        this.add.image(1000, EQ_Y, 'equip_panel');           // Quiz 3 relé
+        this.add.image(1100, EQ_Y, 'equip_ups');             // deco
+        this.add.image(1400, EQ_Y, 'equip_panel');           // deco zona sin monit.
+        this.add.image(1870, EQ_Y, 'equip_panel');           // Quiz 4 — después Hole 2
+        this.add.image(2000, EQ_Y, 'equip_panel');           // deco final
+
+        const labelStyle = { fontSize: '7px', fontFamily: FONT, fontStyle: 'bold' };
+        this.add.text(750,  FLOOR_Y - 72, 'SIN CONTRATO',  { ...labelStyle, fill: '#e84057' }).setOrigin(0.5);
+        this.add.text(1000, FLOOR_Y - 72, 'RELÉ ANTIGUO',  { ...labelStyle, fill: '#f0a030' }).setOrigin(0.5);
+        this.add.text(1870, FLOOR_Y - 72, 'SIN MONIT.',    { ...labelStyle, fill: '#f0a030' }).setOrigin(0.5);
+
+        // Señales de peligro en los bordes de los agujeros
+        HOLES.forEach(h => {
+            // Letrero "⚠" en el borde izquierdo y derecho del agujero
+            this.add.text(h.x1 - 16, FLOOR_Y - 20, '⚠', {
+                fontSize: '14px', fill: '#f0d020', fontFamily: FONT
+            }).setOrigin(0.5);
+            this.add.text(h.x2 + 16, FLOOR_Y - 20, '⚠', {
+                fontSize: '14px', fill: '#f0d020', fontFamily: FONT
+            }).setOrigin(0.5);
+        });
+
+        // --------------------------------------------------------
+        //  LEADS VÁLIDOS — sprites SIN física para evitar gravedad
+        //  La detección de proximidad se hace manualmente en update()
+        //  y=370 → distancia al jugador en suelo ≈ 32px (< 60px OK)
+        // --------------------------------------------------------
+        this.validLeads = [];
+        const VALID_LEAD_DATA = [
+            { x: 500,  y: 370, quizId: 1 },   // suelo — panel corroído
+            { x: 750,  y: 370, quizId: 2 },   // suelo — sin contrato
+            { x: 970,  y: 295, quizId: 3 },   // Plataforma A — relé antiguo
+            { x: 1870, y: 370, quizId: 4 },   // suelo — después de Hole 2
+        ];
+        VALID_LEAD_DATA.forEach(ld => {
+            const lead = this.add.sprite(ld.x, ld.y, 'lead_valid');
+            lead.quizId = ld.quizId;
+            lead.alive = true;
+            this.tweens.add({
+                targets: lead, y: ld.y - 8,
+                duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+            });
+            this.validLeads.push(lead);
+        });
+
+        // --------------------------------------------------------
+        //  LEADS INVÁLIDOS — sprites SIN física
+        //  Proximidad manual (< 22px = "toca") en update()
+        // --------------------------------------------------------
+        this.invalidLeads = [];
+        const INVALID_LEAD_DATA = [
+            { x: 650,  y: 370, reason: '❌ LEAD INVÁLIDO: Las renovaciones de contratos NO cuentan como F2O' },
+            { x: 1420, y: 265, reason: '❌ LEAD INVÁLIDO: Los leads de campañas marketing no son del detector' },
+        ];
+        INVALID_LEAD_DATA.forEach(ld => {
+            const lead = this.add.sprite(ld.x, ld.y, 'lead_invalid');
+            lead.reason = ld.reason;
+            lead.alive = true;
+            this.tweens.add({
+                targets: lead, y: ld.y - 8,
+                duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+            });
+            this.invalidLeads.push(lead);
+        });
+
+        // --------------------------------------------------------
+        //  CHARCOS — grupo de peligros con física (overlap)
+        //  Zona de colisión ajustada a la forma visual (48x8)
+        // --------------------------------------------------------
+        const WAT_Y = FLOOR_Y - 6;
+        this.hazardGroup = this.physics.add.staticGroup();
+        const w1 = this.hazardGroup.create(850,  WAT_Y, 'hazard_water');
+        const w2 = this.hazardGroup.create(1250, WAT_Y, 'hazard_water');
+        // Reducir hitbox a la zona central del charco
+        [w1, w2].forEach(w => {
+            w.setSize(40, 8);
+            w.refreshBody();
+        });
+
+        // --------------------------------------------------------
+        //  JUGADOR
+        // --------------------------------------------------------
+        this.player = this.physics.add.sprite(80, 300, 'tech_stand');
+        // NO setCollideWorldBounds — necesitamos que el jugador caiga
+        // por los agujeros sin ser bloqueado por el límite inferior
+        this.player.setCollideWorldBounds(false);
+        this.player.play('idle');
+
+        this.physics.add.collider(this.player, this.floorGroup);
+        this.physics.add.collider(this.player, this.platformGroup);
+
+        // Overlap con charcos: daño continuo mientras se pisa
+        this.physics.add.overlap(this.player, this.hazardGroup, () => {
+            this.inWater = true;
+        });
+
+        // (los leads inválidos se detectan por proximidad en update())
+
+        // --------------------------------------------------------
+        //  CÁMARA
+        // --------------------------------------------------------
+        // Cámara acotada a la zona visible (no baja hacia los agujeros)
+        this.cameras.main.setBounds(0, 0, WORLD_W, 450);
+        this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
+
+        // --------------------------------------------------------
+        //  CONTROLES
+        // --------------------------------------------------------
+        this.cursors  = this.input.keyboard.createCursorKeys();
+        this.keyA     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+        this.keyD     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+        this.keyW     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+        this.keySpace = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+        this.keyE     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+        this.keyESC   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+        this.keyESC.on('down', () => { if (!this.levelEnded) this.scene.start('TitleScene'); });
+
+        // --------------------------------------------------------
+        //  TIMER — descuenta 1 segundo cada segundo
+        // --------------------------------------------------------
+        this.timerEvent = this.time.addEvent({
+            delay: 1000,
+            repeat: this.timeLeft - 1,
+            callback: () => {
+                if (this.levelEnded) return;
+                this.timeLeft = Math.max(0, this.timeLeft - 1);
+                this._updateTimerText();
+                if (this.timeLeft <= 0) this._endLevel('timeout');
+            }
+        });
+
+        // --------------------------------------------------------
+        //  HUD — todos los elementos con setScrollFactor(0)
+        // --------------------------------------------------------
+        const hudGfx = this.add.graphics().setScrollFactor(0).setDepth(10);
+
+        // Fondo semitransparente izquierda (SEGURIDAD)
+        hudGfx.fillStyle(0x000000, 0.50);
+        hudGfx.fillRect(8, 6, 148, 30);
+
+        // Fondo semitransparente centro (TIMER)
+        hudGfx.fillStyle(0x000000, 0.50);
+        hudGfx.fillRect(340, 6, 120, 22);
+
+        // Fondo semitransparente derecha (LEADS / BONUS)
+        hudGfx.fillStyle(0x000000, 0.50);
+        hudGfx.fillRect(692, 6, 102, 30);
+
+        // — Etiqueta SEGURIDAD —
+        this.add.text(16, 9, 'SEGURIDAD', {
+            fontSize: '9px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold'
+        }).setScrollFactor(0).setDepth(11);
+
+        // — Barra de vida (fondo + barra activa) —
+        const BAR_X = 16, BAR_Y = 22, BAR_W = 120, BAR_H = 8;
+        // Fondo de la barra (gris oscuro)
+        const barBg = this.add.graphics().setScrollFactor(0).setDepth(11);
+        barBg.fillStyle(0x333344);
+        barBg.fillRect(BAR_X, BAR_Y, BAR_W, BAR_H);
+        // Barra activa verde
+        this.healthBar = this.add.graphics().setScrollFactor(0).setDepth(12);
+        this._drawHealthBar();
+
+        // — Texto del timer (centro) —
+        this.timerText = this.add.text(400, 9, '05:00', {
+            fontSize: '14px', fill: '#e8e8f0', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(11);
+
+        // — LEADS y BONUS (derecha) —
+        this.leadsText = this.add.text(698, 9,
+            `LEADS: ${this.leadsCollected}/4`, {
+            fontSize: '10px', fill: '#3DCD58', fontFamily: FONT
+        }).setScrollFactor(0).setDepth(11);
+
+        this.bonusText = this.add.text(698, 22,
+            `BONUS: ${this.bonusEuros}€`, {
+            fontSize: '10px', fill: '#f0a030', fontFamily: FONT
+        }).setScrollFactor(0).setDepth(11);
+
+        // --------------------------------------------------------
+        //  PROMPT DE INSPECCIÓN — se reposiciona en update()
+        //  En coordenadas de MUNDO (scrollFactor=1 por defecto)
+        // --------------------------------------------------------
+        this.inspectPrompt = this.add.text(0, 0, '[E] Inspeccionar', {
+            fontSize: '10px', fill: '#6de882', fontFamily: FONT, fontStyle: 'bold',
+            backgroundColor: '#000000bb', padding: { x: 5, y: 3 }
+        }).setOrigin(0.5, 1).setVisible(false).setDepth(8);
+    }
+
+    // ------------------------------------------------------------
+    //  HELPERS — actualizar HUD
+    // ------------------------------------------------------------
+
+    _drawHealthBar() {
+        this.healthBar.clear();
+        const pct = Phaser.Math.Clamp(this.health / 100, 0, 1);
+        // Color de la barra: verde > amarillo > rojo según % vida
+        const color = pct > 0.5 ? 0x3DCD58 : pct > 0.25 ? 0xf0d020 : 0xe84057;
+        this.healthBar.fillStyle(color);
+        this.healthBar.fillRect(16, 22, Math.floor(120 * pct), 8);
+    }
+
+    _updateTimerText() {
+        const m = Math.floor(this.timeLeft / 60).toString().padStart(2, '0');
+        const s = (this.timeLeft % 60).toString().padStart(2, '0');
+        this.timerText.setText(`${m}:${s}`);
+        // Parpadeo rojo en los últimos 30 segundos
+        if (this.timeLeft <= 30) {
+            this.timerText.setStyle({ fill: this.timeLeft % 2 === 0 ? '#e84057' : '#e8e8f0' });
+        }
+    }
+
+    _endLevel(reason) {
+        if (this.levelEnded) return;
+        this.levelEnded = true;
+        this.timerEvent.remove();
+        this.player.setVelocity(0, 0);
+        this.inspectPrompt.setVisible(false);
+        // Pequeña pausa antes de cambiar de escena para que el jugador vea el último estado
+        this.time.delayedCall(600, () => {
+            this.scene.start('SummaryScene', {
+                reason,
+                leadsCollected: this.leadsCollected,
+                leadsTotal:     4,
+                invalidAvoided: 2 - this.invalidsTouched,
+                health:         Math.max(0, Math.round(this.health)),
+                timeLeft:       this.timeLeft,
+                score:          this.score,
+                bonusEuros:     this.bonusEuros
+            });
+        });
+    }
+
+    // ------------------------------------------------------------
+    //  Recoge un lead válido, suma puntos y muestra popup de bonus
+    // ------------------------------------------------------------
+    _collectLead(lead) {
+        if (!lead.alive) return;
+        lead.alive = false;
+        lead.setVisible(false);
+        this.leadsCollected++;
+        this.score      += 100;
+        this.bonusEuros += 230;
+        // Texto "+230€" flotante que sube y desaparece
+        const pop = this.add.text(lead.x, lead.y - 10, '+230€', {
+            fontSize: '13px', fill: '#f0a030',
+            fontFamily: 'Courier New, Courier, monospace', fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(9);
+        this.tweens.add({
+            targets: pop, y: pop.y - 45, alpha: 0,
+            duration: 1100, ease: 'Power2',
+            onComplete: () => { if (pop.active) pop.destroy(); }
+        });
+        if (this.leadsCollected >= 4) {
+            this.time.delayedCall(900, () => this._endLevel('complete'));
+        }
+    }
+
+    _touchInvalidLead(lead) {
+        if (!lead.alive) return;
+        lead.alive = false;
+        lead.setVisible(false);
+        this.invalidsTouched++;
+        this.score = Math.max(0, this.score - 50);
+        this.cameras.main.flash(300, 255, 0, 0);
+        const W = this.scale.width, H = this.scale.height;
+        const FONT = 'Courier New, Courier, monospace';
+        const msg = this.add.text(W / 2, H * 0.55, lead.reason, {
+            fontSize: '11px', fill: '#e84057', fontFamily: FONT,
+            align: 'center', backgroundColor: '#000000cc',
+            padding: { x: 12, y: 8 }, wordWrap: { width: 520 }
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(15);
+        this.time.delayedCall(2200, () => { if (msg.active) msg.destroy(); });
+    }
+
+    // ------------------------------------------------------------
+    //  UPDATE — loop principal
+    // ------------------------------------------------------------
+    update() {
+        if (this.levelEnded) return;
+
+        const body     = this.player.body;
+        const onGround = body.blocked.down;
+
+        // — Movimiento —
+        const goLeft  = this.cursors.left.isDown  || this.keyA.isDown;
+        const goRight = this.cursors.right.isDown || this.keyD.isDown;
+        const doJump  = Phaser.Input.Keyboard.JustDown(this.cursors.up)
+                     || Phaser.Input.Keyboard.JustDown(this.keyW)
+                     || Phaser.Input.Keyboard.JustDown(this.keySpace);
+
+        if (goLeft) {
+            this.player.setVelocityX(-200);
+            this.player.setFlipX(true);
+            if (onGround) this.player.play('walk', true);
+        } else if (goRight) {
+            this.player.setVelocityX(200);
+            this.player.setFlipX(false);
+            if (onGround) this.player.play('walk', true);
+        } else {
+            this.player.setVelocityX(0);
+            if (onGround) this.player.play('idle', true);
+        }
+        if (doJump && onGround) this.player.setVelocityY(-450);
+
+        // — Caída por agujero —
+        if (this.player.y > 460 && !this.levelEnded) {
+            this.health = 0;
+            // Mostrar mensaje de seguridad antes de terminar
+            const W = this.scale.width, H = this.scale.height;
+            const FONT = 'Courier New, Courier, monospace';
+            const fallGfx = this.add.graphics().setScrollFactor(0).setDepth(25);
+            fallGfx.fillStyle(0x000000, 0.75);
+            fallGfx.fillRect(0, 0, W, H);
+            this.add.text(W / 2, H * 0.40, '⚠ ACCIDENTE DE ALTURA', {
+                fontSize: '20px', fill: '#e84057', fontFamily: FONT, fontStyle: 'bold'
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(26);
+            this.add.text(W / 2, H * 0.54,
+                'Recuerda: antes de trabajar en altura\n' +
+                'usa arnés, delimita la zona y señaliza.', {
+                fontSize: '12px', fill: '#f0d020', fontFamily: FONT,
+                align: 'center', lineSpacing: 5
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(26);
+            // Opción de reiniciar el nivel
+            const restartBlink = this.add.text(W / 2, H * 0.72, '▶  ENTER para reiniciar el nivel', {
+                fontSize: '13px', fill: '#6de882', fontFamily: FONT
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(26);
+            this.tweens.add({
+                targets: restartBlink, alpha: 0.15, duration: 500,
+                yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+            });
+            this.time.delayedCall(300, () => {
+                this.input.keyboard.once('keydown-ENTER', () => {
+                    this.scene.restart();
+                });
+            });
+            this.levelEnded = true;
+            return;
+        }
+
+        // — Evitar que el jugador salga por los laterales —
+        if (this.player.x < 16)   this.player.setX(16);
+        if (this.player.x > 2384) this.player.setX(2384); // 2400 - 16
+
+        // — Peligro: charcos —
+        if (this.inWater) {
+            this.health -= 0.3;
+            this.player.setTint(0xff6666);
+            if (this.health <= 0) { this.health = 0; this._endLevel('gameover'); }
+        } else {
+            this.player.setTint(0xffffff);
+        }
+        this.inWater = false;  // se reactiva vía overlap si sigue en contacto
+
+        // — Detección de proximidad: leads válidos —
+        let nearLead = null;
+        this.validLeads.forEach(lead => {
+            if (!lead.alive) return;
+            const dist = Phaser.Math.Distance.Between(
+                this.player.x, this.player.y, lead.x, lead.y
+            );
+            if (dist < 60) nearLead = lead;
+        });
+
+        if (nearLead) {
+            this.inspectPrompt.setPosition(nearLead.x, nearLead.y - 16).setVisible(true);
+            if (Phaser.Input.Keyboard.JustDown(this.keyE)) {
+                this._collectLead(nearLead);
+                this.inspectPrompt.setVisible(false);
+            }
+        } else {
+            this.inspectPrompt.setVisible(false);
+        }
+
+        // — Detección de proximidad: leads inválidos (trampa por contacto ~20px) —
+        this.invalidLeads.forEach(lead => {
+            if (!lead.alive) return;
+            const dist = Phaser.Math.Distance.Between(
+                this.player.x, this.player.y, lead.x, lead.y
+            );
+            if (dist < 22) this._touchInvalidLead(lead);
+        });
+
+        // — Actualizar HUD —
+        this._drawHealthBar();
+        this.leadsText.setText(`LEADS: ${this.leadsCollected}/4`);
+        this.bonusText.setText(`BONUS: ${this.bonusEuros}€`);
+    }
+}
+
+
+// ================================================================
+//  SUMMARY SCENE
+//  Muestra estadísticas del nivel al finalizar.
+//  Recibe: { reason, leadsCollected, leadsTotal, invalidAvoided,
+//            health, timeLeft, score, bonusEuros }
+//  ENTER → vuelve al título (en it. futuras, irá al Mundo 2)
+// ================================================================
+class SummaryScene extends Phaser.Scene {
+    constructor() { super({ key: 'SummaryScene' }); }
+
+    create(data) {
+        const W    = this.scale.width;
+        const H    = this.scale.height;
+        const FONT = 'Courier New, Courier, monospace';
+
+        this.cameras.main.setBackgroundColor('#1a1a2e');
+
+        // Título según resultado
+        const titles  = { complete: '✅ MISIÓN COMPLETADA', timeout: '⏰ TIEMPO AGOTADO', gameover: '☠ GAME OVER' };
+        const tcolors = { complete: '#3DCD58',              timeout: '#f0a030',            gameover: '#e84057' };
+        this.add.text(W / 2, H * 0.07, titles[data.reason] || '— FIN —', {
+            fontSize: '22px', fill: tcolors[data.reason] || '#e8e8f0',
+            fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        this.add.text(W / 2, H * 0.18, 'SUBESTACIÓN LV', {
+            fontSize: '13px', fill: '#7a7a8e', fontFamily: FONT
+        }).setOrigin(0.5);
+
+        // Línea separadora
+        const g = this.add.graphics();
+        g.lineStyle(1, 0x3DCD58, 0.3);
+        g.lineBetween(80, H * 0.25, W - 80, H * 0.25);
+
+        // Tiempo formateado
+        const tm = Math.floor(data.timeLeft / 60).toString().padStart(2, '0');
+        const ts = (data.timeLeft % 60).toString().padStart(2, '0');
+
+        // Tabla de estadísticas
+        const stats = [
+            { label: 'Leads válidos detectados:',  val: `${data.leadsCollected}/${data.leadsTotal}`, col: '#3DCD58' },
+            { label: 'Leads inválidos evitados:',  val: `${data.invalidAvoided}/2`,                  col: data.invalidAvoided === 2 ? '#3DCD58' : '#f0a030' },
+            { label: 'Seguridad restante:',        val: `${data.health}%`,                           col: data.health > 50 ? '#3DCD58' : data.health > 25 ? '#f0a030' : '#e84057' },
+            { label: 'Tiempo restante:',           val: `${tm}:${ts}`,                               col: '#e8e8f0' },
+            { label: 'Puntuación:',                val: `${data.score} pts`,                         col: '#e8e8f0' },
+        ];
+        const ROW_Y = H * 0.30;
+        const ROW_H = 30;
+        stats.forEach((st, i) => {
+            this.add.text(W * 0.20, ROW_Y + i * ROW_H, st.label, {
+                fontSize: '12px', fill: '#a0a0b8', fontFamily: FONT
+            });
+            this.add.text(W * 0.80, ROW_Y + i * ROW_H, st.val, {
+                fontSize: '12px', fill: st.col, fontFamily: FONT, fontStyle: 'bold'
+            }).setOrigin(1, 0);
+        });
+
+        // Bonus en grande — es el dato más motivador
+        const bonusBox = this.add.graphics();
+        bonusBox.fillStyle(0x0e1020, 0.85);
+        bonusBox.fillRect(W * 0.25, H * 0.72, W * 0.50, 38);
+        bonusBox.lineStyle(2, 0xf0a030, 0.9);
+        bonusBox.strokeRect(W * 0.25, H * 0.72, W * 0.50, 38);
+        this.add.text(W / 2, H * 0.72 + 19, `Bonus estimado: ${data.bonusEuros} €`, {
+            fontSize: '17px', fill: '#f0a030', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // Texto parpadeante
+        const blink = this.add.text(W / 2, H * 0.90, '▶  Pulsa ENTER para continuar', {
+            fontSize: '12px', fill: '#6de882', fontFamily: FONT
+        }).setOrigin(0.5);
+        this.tweens.add({ targets: blink, alpha: 0.15, duration: 550, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+        // ENTER → volver al título (Iteración 2: irá a Mundo 2)
+        this.time.delayedCall(200, () => {
+            this.input.keyboard.once('keydown-ENTER', () => this.scene.start('TitleScene'));
+        });
+    }
+}
+
+
+// ================================================================
+//  CONFIGURACIÓN DE PHASER
+// ================================================================
+const config = {
+    type: Phaser.AUTO,
+    width: 800,
+    height: 450,
+    backgroundColor: '#1a1a2e',
+    parent: 'game',
+    physics: {
+        default: 'arcade',
+        arcade: { gravity: { y: 800 }, debug: false }
+    },
+    scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    scene: [ BootScene, TitleScene, BriefingScene, GameScene, SummaryScene ]
+};
+
+const game = new Phaser.Game(config);
+</script>
+</body>
+</html>
