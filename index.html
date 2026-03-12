@@ -17,6 +17,53 @@
 'use strict';
 
 // ================================================================
+//  DATOS FORMATIVOS — Quizzes Mundo 1: Subestación LV
+//  Fuente: programa F2O — Schneider Electric Iberia
+// ================================================================
+const QUIZZES_MUNDO1 = [
+  {
+    id: 1,
+    titulo: 'CUADRO CON CORROSIÓN',
+    pregunta: 'Detectas oxidación y humedad en la envolvente del cuadro LV. ¿Qué oportunidad generas?',
+    opciones: [
+      { texto: 'Renovación del contrato existente',  correcto: false, feedback: 'Las renovaciones NO cuentan como lead F2O' },
+      { texto: 'EcoConsult + Modernización LV',       correcto: true,  feedback: '¡Correcto! La corrosión indica necesidad de evaluación y modernización' },
+      { texto: 'Cambio de baterías UPS',              correcto: false, feedback: 'Esto es un cuadro LV, no un UPS. Observa bien el equipo' }
+    ]
+  },
+  {
+    id: 2,
+    titulo: 'EQUIPO SIN CONTRATO',
+    pregunta: 'El cliente comenta que este cuadro no tiene contrato de mantenimiento. ¿Qué haces?',
+    opciones: [
+      { texto: 'No es mi tema, ya se lo dirá ventas', correcto: false, feedback: 'Como Trusted Advisor, TÚ detectas la oportunidad' },
+      { texto: 'Genero lead para nuevo contrato',     correcto: true,  feedback: '¡Exacto! Nuevos contratos son leads válidos F2O' },
+      { texto: 'Le digo que llame al CCC',            correcto: false, feedback: 'Leads del CCC son INVÁLIDOS para F2O' }
+    ]
+  },
+  {
+    id: 3,
+    titulo: 'RELÉ ANTIGUO',
+    pregunta: 'Ves un relé de protección de más de 15 años sin recambios. ¿Qué oportunidad detectas?',
+    opciones: [
+      { texto: 'Modernización LV + Critical Spares',  correcto: true,  feedback: '¡Bien visto! Equipo obsoleto = modernización necesaria' },
+      { texto: 'Battery Replacement',                 correcto: false, feedback: 'No es una batería. Identifica el equipo correctamente' },
+      { texto: 'Ya está registrado por el ISSR',      correcto: false, feedback: 'No asumas. Leads del ISSR no cuentan como F2O' }
+    ]
+  },
+  {
+    id: 4,
+    titulo: 'MONITORIZACIÓN REMOTA',
+    pregunta: "El facility manager pregunta: '¿Hay algo para ver el estado de los equipos desde mi oficina?'",
+    opciones: [
+      { texto: 'Le digo que no es posible',                          correcto: false, feedback: '¡Sí es posible! Perdiste una oportunidad' },
+      { texto: 'Explico EcoStruxure Asset Advisor y genero lead',    correcto: true,  feedback: '¡Perfecto! Detectas necesidad y ofreces solución' },
+      { texto: 'Le paso el contacto del comercial sin más',          correcto: false, feedback: 'Puedes hacer más: explica el valor y genera TÚ el lead' }
+    ]
+  }
+];
+
+// ================================================================
 //  FIELD HERO — La Ruta del Técnico
 //  Iteración 1  |  F2O Training Game — Schneider Electric
 //
@@ -409,10 +456,13 @@ class GameScene extends Phaser.Scene {
         //  ESTADO DEL NIVEL
         // --------------------------------------------------------
         this.health           = 100;
-        this.leadsCollected   = 0;
+        this.leadsCollected   = 0;   // leads con respuesta correcta
+        this.leadsAttempted   = 0;   // leads interactuados (correcto O fallado)
+        this.leadsCorrect     = 0;   // alias explícito para hit rate
+        this.leadsTotal       = 4;
         this.score            = 0;
         this.bonusEuros       = 0;
-        this.timeLeft         = 300;   // 5 minutos en segundos
+        this.timeLeft         = 300;
         this.levelEnded       = false;
         this.inWater          = false;
         this.invalidsTouched  = 0;
@@ -634,9 +684,9 @@ class GameScene extends Phaser.Scene {
         // --------------------------------------------------------
         const hudGfx = this.add.graphics().setScrollFactor(0).setDepth(10);
 
-        // Fondo semitransparente izquierda (SEGURIDAD)
+        // Fondo semitransparente izquierda (SEGURIDAD + SCORE)
         hudGfx.fillStyle(0x000000, 0.50);
-        hudGfx.fillRect(8, 6, 148, 30);
+        hudGfx.fillRect(8, 6, 148, 44);
 
         // Fondo semitransparente centro (TIMER)
         hudGfx.fillStyle(0x000000, 0.50);
@@ -660,6 +710,11 @@ class GameScene extends Phaser.Scene {
         // Barra activa verde
         this.healthBar = this.add.graphics().setScrollFactor(0).setDepth(12);
         this._drawHealthBar();
+
+        // — Score (izquierda, bajo barra de vida) —
+        this.scoreText = this.add.text(16, 34, 'SCORE: 0', {
+            fontSize: '9px', fill: '#e8e8f0', fontFamily: FONT
+        }).setScrollFactor(0).setDepth(11);
 
         // — Texto del timer (centro) —
         this.timerText = this.add.text(400, 9, '05:00', {
@@ -685,6 +740,34 @@ class GameScene extends Phaser.Scene {
             fontSize: '10px', fill: '#6de882', fontFamily: FONT, fontStyle: 'bold',
             backgroundColor: '#000000bb', padding: { x: 5, y: 3 }
         }).setOrigin(0.5, 1).setVisible(false).setDepth(8);
+
+        // --------------------------------------------------------
+        //  EVENTO: resultado del quiz (emitido por QuizScene)
+        // --------------------------------------------------------
+        this.events.on('quiz-complete', ({ correct }) => {
+            this.leadsAttempted++;
+            if (correct) {
+                this.leadsCollected++;
+                this.leadsCorrect++;
+                this.score      += 100;
+                this.bonusEuros += 230;
+                // Popup "+230€" en la posición del lead recogido
+                const pop = this.add.text(
+                    this._pendingLeadX, this._pendingLeadY - 10, '+230€', {
+                    fontSize: '13px', fill: '#f0a030',
+                    fontFamily: 'Courier New, Courier, monospace', fontStyle: 'bold'
+                }).setOrigin(0.5).setDepth(9);
+                this.tweens.add({
+                    targets: pop, y: pop.y - 45, alpha: 0,
+                    duration: 1100, ease: 'Power2',
+                    onComplete: () => { if (pop.active) pop.destroy(); }
+                });
+            }
+            // Cuando se han interactuado todos los leads (correctos o fallados) → fin
+            if (this.leadsAttempted >= this.leadsTotal) {
+                this.time.delayedCall(900, () => this._endLevel('complete'));
+            }
+        });
     }
 
     // ------------------------------------------------------------
@@ -719,14 +802,15 @@ class GameScene extends Phaser.Scene {
         // Pequeña pausa antes de cambiar de escena para que el jugador vea el último estado
         this.time.delayedCall(600, () => {
             this.scene.start('SummaryScene', {
-                reason,
+                completed:      reason === 'complete',
                 leadsCollected: this.leadsCollected,
-                leadsTotal:     4,
-                invalidAvoided: 2 - this.invalidsTouched,
+                leadsCorrect:   this.leadsCorrect,
+                leadsTotal:     this.leadsTotal,
+                invalidTouched: this.invalidsTouched,
                 health:         Math.max(0, Math.round(this.health)),
                 timeLeft:       this.timeLeft,
                 score:          this.score,
-                bonusEuros:     this.bonusEuros
+                bonus:          this.bonusEuros
             });
         });
     }
@@ -738,22 +822,13 @@ class GameScene extends Phaser.Scene {
         if (!lead.alive) return;
         lead.alive = false;
         lead.setVisible(false);
-        this.leadsCollected++;
-        this.score      += 100;
-        this.bonusEuros += 230;
-        // Texto "+230€" flotante que sube y desaparece
-        const pop = this.add.text(lead.x, lead.y - 10, '+230€', {
-            fontSize: '13px', fill: '#f0a030',
-            fontFamily: 'Courier New, Courier, monospace', fontStyle: 'bold'
-        }).setOrigin(0.5).setDepth(9);
-        this.tweens.add({
-            targets: pop, y: pop.y - 45, alpha: 0,
-            duration: 1100, ease: 'Power2',
-            onComplete: () => { if (pop.active) pop.destroy(); }
-        });
-        if (this.leadsCollected >= 4) {
-            this.time.delayedCall(900, () => this._endLevel('complete'));
-        }
+        this.inspectPrompt.setVisible(false);
+        // Guardar posición para el popup "+230€" tras el quiz
+        this._pendingLeadX = lead.x;
+        this._pendingLeadY = lead.y;
+        // Pausar GameScene y lanzar QuizScene como overlay
+        this.scene.pause('GameScene');
+        this.scene.launch('QuizScene', { quizId: lead.quizId });
     }
 
     _touchInvalidLead(lead) {
@@ -761,16 +836,24 @@ class GameScene extends Phaser.Scene {
         lead.alive = false;
         lead.setVisible(false);
         this.invalidsTouched++;
-        this.score = Math.max(0, this.score - 50);
+        this.score  -= 50;              // puede ir a negativo
+        this.health -= 10;
+        this._drawHealthBar();
         this.cameras.main.flash(300, 255, 0, 0);
         const W = this.scale.width, H = this.scale.height;
         const FONT = 'Courier New, Courier, monospace';
-        const msg = this.add.text(W / 2, H * 0.55, lead.reason, {
-            fontSize: '11px', fill: '#e84057', fontFamily: FONT,
-            align: 'center', backgroundColor: '#000000cc',
-            padding: { x: 12, y: 8 }, wordWrap: { width: 520 }
+        // Fondo semitransparente + razón del lead inválido en rojo
+        const bg = this.add.graphics().setScrollFactor(0).setDepth(14);
+        bg.fillStyle(0x000000, 0.70);
+        bg.fillRect(80, H * 0.38, W - 160, 80);
+        const msg = this.add.text(W / 2, H * 0.38 + 40, lead.reason, {
+            fontSize: '14px', fill: '#e84057', fontFamily: FONT,
+            align: 'center', fontStyle: 'bold', wordWrap: { width: W - 200 }
         }).setOrigin(0.5).setScrollFactor(0).setDepth(15);
-        this.time.delayedCall(2200, () => { if (msg.active) msg.destroy(); });
+        this.time.delayedCall(2500, () => {
+            if (bg.active)  bg.destroy();
+            if (msg.active) msg.destroy();
+        });
     }
 
     // ------------------------------------------------------------
@@ -883,6 +966,7 @@ class GameScene extends Phaser.Scene {
 
         // — Actualizar HUD —
         this._drawHealthBar();
+        this.scoreText.setText(`SCORE: ${this.score}`);
         this.leadsText.setText(`LEADS: ${this.leadsCollected}/4`);
         this.bonusText.setText(`BONUS: ${this.bonusEuros}€`);
     }
@@ -906,16 +990,16 @@ class SummaryScene extends Phaser.Scene {
 
         this.cameras.main.setBackgroundColor('#1a1a2e');
 
-        // Título según resultado
-        const titles  = { complete: '✅ MISIÓN COMPLETADA', timeout: '⏰ TIEMPO AGOTADO', gameover: '☠ GAME OVER' };
-        const tcolors = { complete: '#3DCD58',              timeout: '#f0a030',            gameover: '#e84057' };
-        this.add.text(W / 2, H * 0.07, titles[data.reason] || '— FIN —', {
-            fontSize: '22px', fill: tcolors[data.reason] || '#e8e8f0',
-            fontFamily: FONT, fontStyle: 'bold'
+        // Título: usa el flag 'completed' que envía GameScene
+        const titulo = data.completed ? '✅ MISIÓN COMPLETADA' : '⏰ TIEMPO AGOTADO';
+        const tcolor = data.completed ? '#3DCD58' : '#f0a030';
+
+        this.add.text(W / 2, H * 0.07, titulo, {
+            fontSize: '22px', fill: tcolor, fontFamily: FONT, fontStyle: 'bold'
         }).setOrigin(0.5);
 
-        this.add.text(W / 2, H * 0.18, 'SUBESTACIÓN LV', {
-            fontSize: '13px', fill: '#7a7a8e', fontFamily: FONT
+        this.add.text(W / 2, H * 0.18, 'MUNDO 1 — SUBESTACIÓN LV', {
+            fontSize: '12px', fill: '#7a7a8e', fontFamily: FONT
         }).setOrigin(0.5);
 
         // Línea separadora
@@ -927,16 +1011,41 @@ class SummaryScene extends Phaser.Scene {
         const tm = Math.floor(data.timeLeft / 60).toString().padStart(2, '0');
         const ts = (data.timeLeft % 60).toString().padStart(2, '0');
 
+        // Hit rate (necesita 3/4 o 4/4 para aprobar)
+        const hitRate  = Math.round((data.leadsCorrect / data.leadsTotal) * 100);
+        const aprobado = data.completed && hitRate >= 75;
+
         // Tabla de estadísticas
         const stats = [
-            { label: 'Leads válidos detectados:',  val: `${data.leadsCollected}/${data.leadsTotal}`, col: '#3DCD58' },
-            { label: 'Leads inválidos evitados:',  val: `${data.invalidAvoided}/2`,                  col: data.invalidAvoided === 2 ? '#3DCD58' : '#f0a030' },
-            { label: 'Seguridad restante:',        val: `${data.health}%`,                           col: data.health > 50 ? '#3DCD58' : data.health > 25 ? '#f0a030' : '#e84057' },
-            { label: 'Tiempo restante:',           val: `${tm}:${ts}`,                               col: '#e8e8f0' },
-            { label: 'Puntuación:',                val: `${data.score} pts`,                         col: '#e8e8f0' },
+            {
+                label: 'Leads detectados:',
+                val:   `${data.leadsCollected}/${data.leadsTotal}`,
+                col:   data.leadsCollected === data.leadsTotal ? '#3DCD58' : '#f0a030'
+            },
+            {
+                label: 'Leads inválidos tocados:',
+                val:   `${data.invalidTouched}/2`,
+                col:   data.invalidTouched === 0 ? '#3DCD58' : '#e84057'
+            },
+            {
+                label: 'Seguridad restante:',
+                val:   `${data.health}%`,
+                col:   data.health > 50 ? '#3DCD58' : data.health > 25 ? '#f0a030' : '#e84057'
+            },
+            {
+                label: 'Tiempo restante:',
+                val:   `${tm}:${ts}`,
+                col:   '#e8e8f0'
+            },
+            {
+                label: 'Puntuación:',
+                val:   `${data.score} pts`,
+                col:   '#e8e8f0'
+            }
         ];
+
         const ROW_Y = H * 0.30;
-        const ROW_H = 30;
+        const ROW_H = 28;
         stats.forEach((st, i) => {
             this.add.text(W * 0.20, ROW_Y + i * ROW_H, st.label, {
                 fontSize: '12px', fill: '#a0a0b8', fontFamily: FONT
@@ -946,26 +1055,238 @@ class SummaryScene extends Phaser.Scene {
             }).setOrigin(1, 0);
         });
 
-        // Bonus en grande — es el dato más motivador
+        // Hit rate — fila destacada
+        const HR_Y = ROW_Y + stats.length * ROW_H + 6;
+        this.add.text(W * 0.20, HR_Y, 'Hit Rate:', {
+            fontSize: '13px', fill: '#a0a0b8', fontFamily: FONT, fontStyle: 'bold'
+        });
+        this.add.text(W * 0.80, HR_Y, `${hitRate}%  (${data.leadsCorrect}/${data.leadsTotal})`, {
+            fontSize: '13px', fill: aprobado ? '#3DCD58' : '#e84057',
+            fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(1, 0);
+
+        // Bonus en grande
+        const BOX_Y = HR_Y + 28;
         const bonusBox = this.add.graphics();
         bonusBox.fillStyle(0x0e1020, 0.85);
-        bonusBox.fillRect(W * 0.25, H * 0.72, W * 0.50, 38);
+        bonusBox.fillRect(W * 0.25, BOX_Y, W * 0.50, 36);
         bonusBox.lineStyle(2, 0xf0a030, 0.9);
-        bonusBox.strokeRect(W * 0.25, H * 0.72, W * 0.50, 38);
-        this.add.text(W / 2, H * 0.72 + 19, `Bonus estimado: ${data.bonusEuros} €`, {
-            fontSize: '17px', fill: '#f0a030', fontFamily: FONT, fontStyle: 'bold'
+        bonusBox.strokeRect(W * 0.25, BOX_Y, W * 0.50, 36);
+        this.add.text(W / 2, BOX_Y + 18, `Bonus estimado: ${data.bonus} €`, {
+            fontSize: '16px', fill: '#f0a030', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // Mensaje de resultado (aprobado / no aprobado)
+        const resultMsg = aprobado
+            ? '✅ Hit rate objetivo alcanzado!\nAvanzas al siguiente site.'
+            : '⚠ Tu hit rate no alcanza el 75%.\nTu supervisor te pide volver al site.';
+        const resultColor = aprobado ? '#3DCD58' : '#f0a030';
+        this.add.text(W / 2, BOX_Y + 58, resultMsg, {
+            fontSize: '11px', fill: resultColor, fontFamily: FONT,
+            align: 'center', lineSpacing: 4
         }).setOrigin(0.5);
 
         // Texto parpadeante
-        const blink = this.add.text(W / 2, H * 0.90, '▶  Pulsa ENTER para continuar', {
+        const blink = this.add.text(W / 2, H * 0.95, '▶  Pulsa ENTER para continuar', {
             fontSize: '12px', fill: '#6de882', fontFamily: FONT
         }).setOrigin(0.5);
         this.tweens.add({ targets: blink, alpha: 0.15, duration: 550, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-        // ENTER → volver al título (Iteración 2: irá a Mundo 2)
+        // ENTER: aprobado → TitleScene (futuro: Mundo 2), no aprobado → BriefingScene
         this.time.delayedCall(200, () => {
-            this.input.keyboard.once('keydown-ENTER', () => this.scene.start('TitleScene'));
+            this.input.keyboard.once('keydown-ENTER', () => {
+                if (aprobado) {
+                    this.scene.start('TitleScene');   // iteración 2: irá a Mundo 2
+                } else {
+                    this.scene.start('BriefingScene'); // reinicia el mismo mundo
+                }
+            });
         });
+    }
+}
+
+
+// ================================================================
+//  QUIZ SCENE
+//  Overlay sobre GameScene. GameScene queda pausada mientras dura.
+//  Recibe { quizId }. Al terminar emite 'quiz-complete' a GameScene
+//  y se cierra sola, reanudando GameScene.
+// ================================================================
+class QuizScene extends Phaser.Scene {
+    constructor() { super({ key: 'QuizScene' }); }
+
+    create(data) {
+        const W    = 800, H = 450;
+        const FONT = 'Courier New, Courier, monospace';
+
+        const quiz = QUIZZES_MUNDO1.find(q => q.id === data.quizId);
+        if (!quiz) { this._close(false); return; }
+
+        this.answered = false;
+        this._quiz    = quiz;
+
+        // — Layout constants —
+        const BOX_X = 140, BOX_Y = 58, BOX_W = 520, BOX_H = 332;
+        const OPT_X = 152, OPT_W = 496, OPT_H = 34, OPT_GAP = 8;
+        const OPT_START_Y = BOX_Y + 142;
+
+        // Guardar para _selectOption
+        this._OPT_X       = OPT_X;
+        this._OPT_W       = OPT_W;
+        this._OPT_H       = OPT_H;
+        this._OPT_GAP     = OPT_GAP;
+        this._OPT_START_Y = OPT_START_Y;
+
+        // ---- Overlay oscuro ----
+        const ov = this.add.graphics();
+        ov.fillStyle(0x000000, 0.85);
+        ov.fillRect(0, 0, W, H);
+
+        // ---- Caja central ----
+        const box = this.add.graphics();
+        box.fillStyle(0x12122a, 1);
+        box.fillRect(BOX_X, BOX_Y, BOX_W, BOX_H);
+        box.lineStyle(2, 0x3DCD58, 1);
+        box.strokeRect(BOX_X, BOX_Y, BOX_W, BOX_H);
+
+        // ---- Título ----
+        this.add.text(W / 2, BOX_Y + 20, '🔍  ' + quiz.titulo, {
+            fontSize: '13px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        const sep = this.add.graphics();
+        sep.lineStyle(1, 0x3DCD58, 0.35);
+        sep.lineBetween(BOX_X + 20, BOX_Y + 42, BOX_X + BOX_W - 20, BOX_Y + 42);
+
+        // ---- Pregunta ----
+        this.add.text(W / 2, BOX_Y + 56, quiz.pregunta, {
+            fontSize: '11px', fill: '#e8e8f0', fontFamily: FONT,
+            align: 'center', wordWrap: { width: 460 }, lineSpacing: 4
+        }).setOrigin(0.5, 0);
+
+        // ---- Opciones ----
+        this.optionRects = [];
+
+        quiz.opciones.forEach((op, i) => {
+            const oy = OPT_START_Y + i * (OPT_H + OPT_GAP);
+
+            const rect = this.add.graphics();
+            this._drawOptRect(rect, OPT_X, oy, OPT_W, OPT_H, 0x2d2d44, 0x4a4a5e, 1);
+            this.optionRects.push(rect);
+
+            // Número de tecla
+            this.add.text(OPT_X + 14, oy + OPT_H / 2, `${i + 1}`, {
+                fontSize: '11px', fill: '#7a7a8e', fontFamily: FONT, fontStyle: 'bold'
+            }).setOrigin(0.5);
+
+            // Texto de la opción
+            this.add.text(OPT_X + 30, oy + OPT_H / 2, op.texto, {
+                fontSize: '11px', fill: '#e8e8f0', fontFamily: FONT
+            }).setOrigin(0, 0.5);
+
+            // Zona interactiva invisible sobre el rectángulo
+            const zone = this.add.zone(OPT_X, oy, OPT_W, OPT_H).setOrigin(0).setInteractive();
+            zone.on('pointerover', () => {
+                if (!this.answered)
+                    this._drawOptRect(rect, OPT_X, oy, OPT_W, OPT_H, 0x3a3a5a, 0x6a6a9a, 1);
+            });
+            zone.on('pointerout', () => {
+                if (!this.answered)
+                    this._drawOptRect(rect, OPT_X, oy, OPT_W, OPT_H, 0x2d2d44, 0x4a4a5e, 1);
+            });
+            zone.on('pointerdown', () => this._selectOption(i));
+        });
+
+        // ---- Feedback (oculto hasta responder) ----
+        this.feedbackText = this.add.text(
+            W / 2, OPT_START_Y + 3 * (OPT_H + OPT_GAP) + 6, '', {
+            fontSize: '11px', fill: '#3DCD58', fontFamily: FONT,
+            align: 'center', wordWrap: { width: 470 }, lineSpacing: 3
+        }).setOrigin(0.5, 0).setVisible(false);
+
+        // ---- "Pulsa ENTER para continuar" (oculto hasta responder) ----
+        this.continueText = this.add.text(W / 2, BOX_Y + BOX_H - 16, '▶  Pulsa ENTER para continuar', {
+            fontSize: '11px', fill: '#6de882', fontFamily: FONT
+        }).setOrigin(0.5, 1).setVisible(false);
+
+        // ---- Teclado 1/2/3 ----
+        this.input.keyboard.on('keydown', (e) => {
+            if (this.answered) return;
+            if (e.key === '1') this._selectOption(0);
+            if (e.key === '2') this._selectOption(1);
+            if (e.key === '3') this._selectOption(2);
+        });
+    }
+
+    // ------------------------------------------------------------
+    //  Dibuja o redibuja un rectángulo de opción
+    // ------------------------------------------------------------
+    _drawOptRect(gfx, x, y, w, h, fill, stroke, strokeAlpha) {
+        gfx.clear();
+        gfx.fillStyle(fill, 1);
+        gfx.fillRect(x, y, w, h);
+        gfx.lineStyle(1, stroke, strokeAlpha);
+        gfx.strokeRect(x, y, w, h);
+    }
+
+    // ------------------------------------------------------------
+    //  Procesa la selección de una opción
+    // ------------------------------------------------------------
+    _selectOption(index) {
+        if (this.answered) return;
+        this.answered = true;
+
+        const quiz      = this._quiz;
+        const selected  = quiz.opciones[index];
+        const isCorrect = selected.correcto;
+        const { _OPT_X: OX, _OPT_W: OW, _OPT_H: OH, _OPT_GAP: OG, _OPT_START_Y: OSY } = this;
+
+        // Colorear opciones
+        quiz.opciones.forEach((op, i) => {
+            const oy   = OSY + i * (OH + OG);
+            const rect = this.optionRects[i];
+            if (i === index) {
+                // La elegida: verde si correcta, roja si no
+                this._drawOptRect(rect, OX, oy, OW, OH,
+                    isCorrect ? 0x1a3a1a : 0x3a1a1a,
+                    isCorrect ? 0x3DCD58 : 0xe84057, 1);
+            } else if (op.correcto) {
+                // Revelar la correcta en verde tenue
+                this._drawOptRect(rect, OX, oy, OW, OH, 0x1a2e1a, 0x3DCD58, 0.6);
+            } else {
+                this._drawOptRect(rect, OX, oy, OW, OH, 0x2d2d44, 0x4a4a5e, 0.4);
+            }
+        });
+
+        // Feedback
+        const emoji = isCorrect ? '✅' : '❌';
+        const label = isCorrect ? '¡Correcto!' : 'Incorrecto';
+        this.feedbackText
+            .setText(`${emoji} ${label} — ${selected.feedback}`)
+            .setStyle({ fill: isCorrect ? '#3DCD58' : '#e84057' })
+            .setVisible(true);
+
+        // "Pulsa ENTER"
+        this.continueText.setVisible(true);
+        this.tweens.add({
+            targets: this.continueText, alpha: 0.2,
+            duration: 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+        });
+
+        // Registrar ENTER con delay para evitar disparo inmediato
+        this.time.delayedCall(300, () => {
+            this.input.keyboard.once('keydown-ENTER', () => this._close(isCorrect));
+        });
+    }
+
+    // ------------------------------------------------------------
+    //  Cierra la escena y comunica el resultado a GameScene
+    // ------------------------------------------------------------
+    _close(correct) {
+        const gameScene = this.scene.get('GameScene');
+        if (gameScene) gameScene.events.emit('quiz-complete', { correct });
+        this.scene.stop('QuizScene');
+        this.scene.resume('GameScene');
     }
 }
 
@@ -987,7 +1308,7 @@ const config = {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH
     },
-    scene: [ BootScene, TitleScene, BriefingScene, GameScene, SummaryScene ]
+    scene: [ BootScene, TitleScene, BriefingScene, GameScene, QuizScene, SummaryScene ]
 };
 
 const game = new Phaser.Game(config);
