@@ -64,17 +64,141 @@ const QUIZZES_MUNDO1 = [
 ];
 
 // ================================================================
+//  DATOS FORMATIVOS — Quizzes Mundo 2: Sala IT / Data Centre
+// ================================================================
+const QUIZZES_MUNDO2 = [
+  {
+    id: 1,
+    titulo: 'UPS CON BATERÍAS VIEJAS',
+    pregunta: 'La pantalla del UPS indica baterías con 6 años de antigüedad. ¿Qué lead generas?',
+    opciones: [
+      { texto: 'Battery Replacement',           correcto: true,  feedback: '¡Correcto! Baterías de más de 4-5 años son oportunidad clara' },
+      { texto: 'Nuevo contrato de cooling',      correcto: false, feedback: 'Cooling y baterías son cosas distintas. Observa el equipo' },
+      { texto: 'No hago nada, aún funcionan',    correcto: false, feedback: 'Como Trusted Advisor debes anticipar riesgos' }
+    ]
+  },
+  {
+    id: 2,
+    titulo: 'COOLING SIN MANTENIMIENTO',
+    pregunta: 'Las unidades de cooling no tienen etiqueta de último mantenimiento. Nunca les han hecho revisión.',
+    opciones: [
+      { texto: 'Complete Cooling Audit + Maintenance Contract', correcto: true,  feedback: '¡Exacto! Doble oportunidad: auditoría + contrato' },
+      { texto: 'Cybersecurity Assessment',                      correcto: false, feedback: 'Cooling y ciberseguridad no están relacionados' },
+      { texto: 'Es problema del instalador',                    correcto: false, feedback: 'Todo equipo en site del cliente es oportunidad para nosotros' }
+    ]
+  },
+  {
+    id: 3,
+    titulo: 'SIN MONITORIZACIÓN',
+    pregunta: 'El data centre no tiene ningún sistema de monitorización remota de los equipos.',
+    opciones: [
+      { texto: 'Connected Systems + EAA',  correcto: true,  feedback: '¡Perfecto! La conectividad es clave para data centres modernos' },
+      { texto: 'Power Factor Correction',  correcto: false, feedback: 'PFC no tiene relación con monitorización' },
+      { texto: 'Safety Training',          correcto: false, feedback: 'Training no resuelve la falta de monitorización' }
+    ]
+  },
+  {
+    id: 4,
+    titulo: 'AMPLIACIÓN DE SALA',
+    pregunta: "El IT manager dice: 'El año que viene ampliamos con 10 racks más.'",
+    opciones: [
+      { texto: 'No es tema de servicio',                      correcto: false, feedback: '¡Tú puedes generar el lead! No dejes pasar la oportunidad' },
+      { texto: 'UPS Modernisation + Cooling Modernisation',   correcto: true,  feedback: '¡Bien! Más racks = más potencia y refrigeración necesaria' },
+      { texto: 'Extended Warranty de los racks actuales',     correcto: false, feedback: 'La ampliación necesita capacidad nueva, no garantía de lo actual' }
+    ]
+  }
+];
+
+// ================================================================
+//  DATOS FORMATIVOS — Quizzes Mundo 3: Subestación HV
+// ================================================================
+const QUIZZES_MUNDO3 = [
+  {
+    id: 1,
+    titulo: 'CELDAS MT ANTIGUAS',
+    pregunta: 'Las celdas de media tensión tienen más de 25 años sin soporte del fabricante.',
+    opciones: [
+      { texto: 'HV Modernisation',   correcto: true,  feedback: '¡Correcto! Equipo sin soporte del fabricante = prioridad de modernización' },
+      { texto: 'Battery Replacement', correcto: false, feedback: 'Son celdas de MT, no baterías' },
+      { texto: 'LV Modernisation',    correcto: false, feedback: 'Es media tensión (HV), no baja tensión (LV)' }
+    ]
+  },
+  {
+    id: 2,
+    titulo: 'SIN CONMUTACIÓN AUTOMÁTICA',
+    pregunta: 'El cliente no tiene conmutación automática ante fallo de suministro.',
+    opciones: [
+      { texto: 'ASCO Power + ASCO Switching', correcto: true,  feedback: '¡Exacto! ASCO es la solución para conmutación y transferencia automática' },
+      { texto: 'Harmonic Studies',             correcto: false, feedback: 'Los armónicos no resuelven la falta de redundancia' },
+      { texto: 'F-Gas assessment',             correcto: false, feedback: 'F-Gas es para refrigerantes, no para conmutación' }
+    ]
+  },
+  {
+    id: 3,
+    titulo: 'TRANSFORMADOR SIN MONITORIZAR',
+    pregunta: 'El transformador principal no tiene sensores de temperatura ni gases.',
+    opciones: [
+      { texto: 'Safety Training',                                 correcto: false, feedback: 'Training no añade sensores al transformador' },
+      { texto: 'EcoStruxure Asset Advisor + Maintenance Contract', correcto: true,  feedback: '¡Bien! Monitorización + mantenimiento preventivo' },
+      { texto: 'Renovar contrato existente',                      correcto: false, feedback: 'Renovaciones no cuentan como F2O' }
+    ]
+  },
+  {
+    id: 4,
+    titulo: 'PERSONAL SIN FORMACIÓN',
+    pregunta: 'Los operarios manipulan celdas HV sin formación específica de seguridad.',
+    opciones: [
+      { texto: 'No es asunto nuestro', correcto: false, feedback: 'La seguridad del cliente SÍ es asunto nuestro como Trusted Advisor' },
+      { texto: 'Safety Training',      correcto: true,  feedback: '¡Correcto! Formación en seguridad es una oferta clave de servicios' },
+      { texto: 'Cybersecurity',        correcto: false, feedback: 'Ciberseguridad protege sistemas digitales, no personas' }
+    ]
+  }
+];
+
+// ================================================================
+//  WORLD DATA — Configuración de cada mundo
+// ================================================================
+const WORLD_DATA = {
+  1: {
+    nombre:      'SUBESTACIÓN LV',
+    descripcion: 'Tu primera visita del día. Una subestación de baja tensión con varios cuadros eléctricos.',
+    consejo:     'Los leads válidos brillan en VERDE. ¡Evita las trampas ROJAS!',
+    objetivo:    'Encuentra 4 leads válidos. Tienes 5 minutos.',
+    tiempo:      300,
+    quizzes:     QUIZZES_MUNDO1
+  },
+  2: {
+    nombre:      'SALA IT / DATA CENTRE',
+    descripcion: 'Segunda visita. Un data centre con UPS, racks de servidores y unidades de cooling. Hay mucho negocio potencial aquí.',
+    consejo:     'Observa el estado de baterías, cooling y conectividad. Son las oportunidades más comunes.',
+    objetivo:    'Encuentra 4 leads válidos. Tienes 5 minutos.',
+    tiempo:      300,
+    quizzes:     QUIZZES_MUNDO2
+  },
+  3: {
+    nombre:      'SUBESTACIÓN HV',
+    descripcion: 'Tercera visita. Una subestación de media/alta tensión. Entorno más peligroso, más oportunidades de alto valor.',
+    consejo:     '¡Cuidado con las zonas de alta tensión! La seguridad va primero, pero no dejes pasar las oportunidades.',
+    objetivo:    'Encuentra 4 leads válidos. Tienes 4 minutos.',
+    tiempo:      240,
+    quizzes:     QUIZZES_MUNDO3
+  }
+};
+
+// Variable global: mundo actual
+let currentWorld = 1;
+
+// ================================================================
 //  FIELD HERO — La Ruta del Técnico
-//  Iteración 1  |  F2O Training Game — Schneider Electric
+//  F2O Training Game — Schneider Electric
 //
 //  Escenas:
 //    BootScene     — genera todas las texturas por código
 //    TitleScene    — pantalla de título
-//    BriefingScene — briefing del Mundo 1
-//    GameScene     — nivel Subestación LV (jugador + plataformas)
-//
-//  Próximas iteraciones:
-//    Leads, Quiz, HUD, SummaryScene
+//    BriefingScene — briefing dinámico (lee WORLD_DATA[currentWorld])
+//    GameScene     — nivel jugable (Mundo 1 implementado)
+//    QuizScene     — overlay de pregunta
+//    SummaryScene  — resumen de puntuación + hit rate
 // ================================================================
 
 
@@ -285,6 +409,92 @@ class BootScene extends Phaser.Scene {
             tex.refresh();
         }
 
+        // --- RACK DE SERVIDORES — 36x80 --------------------------
+        {
+            const { tex, ctx } = mkTex('equip_rack', 36, 80);
+            r(ctx,  0,  0, 36, 80, '#1a1a2e');   // chasis negro
+            r(ctx,  0,  0, 36,  2, '#2a2a3a');   // bordes
+            r(ctx,  0,  0,  2, 80, '#2a2a3a');
+            r(ctx, 34,  0,  2, 80, '#2a2a3a');
+            r(ctx,  0, 78, 36,  2, '#2a2a3a');
+            r(ctx,  2,  2,  3, 76, '#2a3a4a');   // raíl izq
+            r(ctx, 31,  2,  3, 76, '#2a3a4a');   // raíl der
+            // 6 unidades de servidor (12px cada una)
+            const leds = ['#3DCD58','#3DCD58','#f0a030','#3DCD58','#e84057','#3DCD58'];
+            for (let i = 0; i < 6; i++) {
+                const sy = 4 + i * 12;
+                r(ctx,  5, sy, 26, 10, '#0d0d1a');   // slot
+                r(ctx,  5, sy, 26,  1, '#1a2a3a');   // separador
+                r(ctx,  6, sy+3,  6,  4, '#151525'); // bay 1
+                r(ctx, 13, sy+3,  6,  4, '#151525'); // bay 2
+                r(ctx, 27, sy+3,  2,  2, leds[i]);   // LED actividad
+                r(ctx, 27, sy+6,  2,  2, '#3DCD58'); // LED power
+            }
+            tex.refresh();
+        }
+
+        // --- UNIDAD COOLING — 48x48 ------------------------------
+        {
+            const { tex, ctx } = mkTex('equip_cooling', 48, 48);
+            r(ctx,  0,  0, 48, 48, '#5a6a7a');   // cuerpo
+            r(ctx,  0,  0, 48,  2, '#3a4a5a');
+            r(ctx,  0,  0,  2, 48, '#3a4a5a');
+            r(ctx, 46,  0,  2, 48, '#3a4a5a');
+            r(ctx,  0, 46, 48,  2, '#3a4a5a');
+            r(ctx,  8,  8, 32, 32, '#3a4a5a');   // housing ventilador
+            r(ctx, 10, 10, 28, 28, '#2a3a4a');
+            // Aspas del ventilador (4 direcciones)
+            r(ctx, 21,  4,  6, 18, '#4a5a6a');   // aspa vertical
+            r(ctx,  4, 21, 18,  6, '#4a5a6a');   // aspa horizontal
+            r(ctx, 27, 21, 18,  6, '#4a5a6a');   // aspa horizontal der
+            r(ctx, 21, 27,  6, 18, '#4a5a6a');   // aspa vertical bajo
+            r(ctx, 19, 19, 10, 10, '#6a7a8a');   // cubo central
+            // Rejilla lateral izq/der
+            for (let i = 0; i < 4; i++) {
+                r(ctx, 2, 8 + i * 8, 5, 3, '#4a5a6a');
+                r(ctx, 41, 8 + i * 8, 5, 3, '#4a5a6a');
+            }
+            r(ctx, 43,  3,  3,  3, '#3DCD58');   // LED estado
+            tex.refresh();
+        }
+
+        // --- UPS CON BATERÍAS VIEJAS — 36x64 ---------------------
+        {
+            const { tex, ctx } = mkTex('equip_ups_old', 36, 64);
+            r(ctx,  0,  0, 36, 64, '#3a4a5a');
+            r(ctx,  0,  0, 36,  2, '#2a3a4a');
+            r(ctx,  0,  0,  2, 64, '#2a3a4a');
+            r(ctx, 34,  0,  2, 64, '#2a3a4a');
+            r(ctx,  0, 62, 36,  2, '#2a3a4a');
+            r(ctx,  4,  4, 28, 16, '#2a1a0a');   // pantalla fondo — rojo/naranja
+            r(ctx,  5,  5, 26, 14, '#f0a030');   // pantalla naranja (alerta baterías)
+            r(ctx,  6,  6, 24, 12, '#c07010');
+            r(ctx,  8,  8, 20,  3, '#f0d020');   // barra de advertencia
+            r(ctx,  8, 13,  8,  2, '#e84057');   // indicador BATT bajo
+            r(ctx, 18, 13,  8,  2, '#e84057');
+            for (let gy = 24; gy < 56; gy += 6) r(ctx, 4, gy, 28, 3, '#2a3a4a');
+            r(ctx, 15, 56,  6,  4, '#e84057');   // LED alerta rojo
+            tex.refresh();
+        }
+
+        // --- SUELO DATA CENTRE — 32x32 ---------------------------
+        {
+            const { tex, ctx } = mkTex('tile_floor_dc', 32, 32);
+            r(ctx,  0,  0, 32, 32, '#5a5a6a');   // base más clara
+            r(ctx,  0,  0, 32,  1, '#4a4a5a');   // bordes
+            r(ctx,  0,  0,  1, 32, '#4a4a5a');
+            r(ctx, 31,  0,  1, 32, '#4a4a5a');
+            r(ctx,  0, 31, 32,  1, '#4a4a5a');
+            r(ctx, 15,  1,  1, 30, '#4a4a5a');   // grid vertical
+            r(ctx,  1, 15, 30,  1, '#4a4a5a');   // grid horizontal
+            r(ctx,  3,  3, 10, 10, '#525262');   // panel elevado A
+            r(ctx, 19,  3, 10, 10, '#525262');   // panel elevado B
+            r(ctx,  3, 19, 10, 10, '#525262');   // panel elevado C
+            r(ctx, 19, 19, 10, 10, '#525262');   // panel elevado D
+            r(ctx,  0,  0, 32,  3, '#3a8a6a');   // franja verde SE
+            tex.refresh();
+        }
+
         // --- Animaciones globales --------------------------------
         this.anims.create({
             key: 'idle',
@@ -355,7 +565,8 @@ class TitleScene extends Phaser.Scene {
         // Delay para evitar que la tecla retenida dispare la siguiente escena
         this.time.delayedCall(200, () => {
             this.input.keyboard.once('keydown-ENTER', () => {
-                this.scene.start('BriefingScene', { worldId: 1 });
+                currentWorld = 1;
+                this.scene.start('BriefingScene');
             });
         });
     }
@@ -365,20 +576,21 @@ class TitleScene extends Phaser.Scene {
 // ================================================================
 //  BRIEFING SCENE
 //  Muestra el contexto del mundo antes de la misión.
-//  Recibe { worldId }. ENTER → GameScene
+//  Lee WORLD_DATA[currentWorld]. ENTER → GameScene
 // ================================================================
 class BriefingScene extends Phaser.Scene {
     constructor() { super({ key: 'BriefingScene' }); }
 
-    create(data) {
-        const W = this.scale.width;
-        const H = this.scale.height;
+    create() {
+        const W    = this.scale.width;
+        const H    = this.scale.height;
         const FONT = 'Courier New, Courier, monospace';
+        const wd   = WORLD_DATA[currentWorld];
 
         this.cameras.main.setBackgroundColor('#1a1a2e');
 
         // Título
-        this.add.text(W / 2, H * 0.10, 'MUNDO 1: SUBESTACIÓN LV', {
+        this.add.text(W / 2, H * 0.10, `MUNDO ${currentWorld}: ${wd.nombre}`, {
             fontSize: '22px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold'
         }).setOrigin(0.5);
 
@@ -388,12 +600,9 @@ class BriefingScene extends Phaser.Scene {
         g.lineBetween(60, H * 0.19, W - 60, H * 0.19);
 
         // Descripción
-        this.add.text(W / 2, H * 0.31,
-            'Tu primera visita del día. Una subestación de baja tensión\n' +
-            'con varios cuadros eléctricos. Completa tu Work Order\n' +
-            'y detecta oportunidades de negocio.', {
+        this.add.text(W / 2, H * 0.31, wd.descripcion, {
             fontSize: '13px', fill: '#e8e8f0', fontFamily: FONT,
-            align: 'center', lineSpacing: 7
+            align: 'center', lineSpacing: 7, wordWrap: { width: W * 0.76 }
         }).setOrigin(0.5);
 
         // Caja consejo con borde verde
@@ -403,14 +612,13 @@ class BriefingScene extends Phaser.Scene {
         gb.fillRect(bx, by, bw, bh);
         gb.lineStyle(2, 0x3DCD58, 1);
         gb.strokeRect(bx, by, bw, bh);
-        this.add.text(W / 2, by + bh / 2,
-            '💡  Leads válidos = VERDE.  Evita las trampas ROJAS.', {
-            fontSize: '11px', fill: '#6de882', fontFamily: FONT, align: 'center'
+        this.add.text(W / 2, by + bh / 2, `💡  ${wd.consejo}`, {
+            fontSize: '11px', fill: '#6de882', fontFamily: FONT,
+            align: 'center', wordWrap: { width: bw - 20 }
         }).setOrigin(0.5);
 
         // Objetivo
-        this.add.text(W / 2, H * 0.72,
-            'Objetivo: Encuentra 4 leads válidos. Tienes 5 minutos.', {
+        this.add.text(W / 2, H * 0.72, `Objetivo: ${wd.objetivo}`, {
             fontSize: '12px', fill: '#e8e8f0', fontFamily: FONT
         }).setOrigin(0.5);
 
@@ -422,7 +630,7 @@ class BriefingScene extends Phaser.Scene {
 
         this.time.delayedCall(200, () => {
             this.input.keyboard.once('keydown-ENTER', () => {
-                this.scene.start('GameScene', { worldId: data.worldId });
+                this.scene.start('GameScene');
             });
         });
     }
@@ -437,20 +645,8 @@ class BriefingScene extends Phaser.Scene {
 class GameScene extends Phaser.Scene {
     constructor() { super({ key: 'GameScene' }); }
 
-    create() {
-        const WORLD_W  = 2400;
-        const WORLD_H  = 650;        // extendido hacia abajo para los agujeros
-        const FLOOR_Y  = 418;        // Y del borde superior del suelo
-        const FLOOR_CY = FLOOR_Y + 16; // centro Y de tiles de suelo (32px)
-        const FONT     = 'Courier New, Courier, monospace';
-
-        // Agujeros en el suelo: rangos de X donde NO se crean tiles
-        // Cada entrada cubre 3 tiles = 96px
-        const HOLES = [
-            { x1: 1120, x2: 1216 },   // Hole 1 — tras Platform A
-            { x1: 1728, x2: 1824 },   // Hole 2 — antes del Lead 4 final
-        ];
-        const inHole = (x) => HOLES.some(h => x >= h.x1 && x < h.x2);
+    create(data) {
+        const FONT = 'Courier New, Courier, monospace';
 
         // --------------------------------------------------------
         //  ESTADO DEL NIVEL
@@ -462,170 +658,18 @@ class GameScene extends Phaser.Scene {
         this.leadsTotal       = 4;
         this.score            = 0;
         this.bonusEuros       = 0;
-        this.timeLeft         = 300;
+        this.timeLeft         = WORLD_DATA[currentWorld].tiempo;
         this.levelEnded       = false;
         this.inWater          = false;
         this.invalidsTouched  = 0;
 
-        // --- Bounds del mundo físico (ampliado en altura para agujeros) ---
-        this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
-
         // --------------------------------------------------------
-        //  FONDO — pared industrial
+        //  CONSTRUIR EL NIVEL según currentWorld
+        //  (establece floorGroup, platformGroup, hazardGroup,
+        //   validLeads, invalidLeads y physics.world.setBounds)
         // --------------------------------------------------------
-        const bg = this.add.graphics();
-        bg.fillStyle(0x2a2a3a);
-        bg.fillRect(0, 0, WORLD_W, FLOOR_Y);
-        // Textura de pared: líneas horizontales
-        bg.lineStyle(1, 0x343444, 0.7);
-        for (let y = 48; y < FLOOR_Y; y += 48) bg.lineBetween(0, y, WORLD_W, y);
-        // Juntas verticales de paneles
-        bg.lineStyle(1, 0x222232, 0.5);
-        for (let x = 160; x < WORLD_W; x += 160) bg.lineBetween(x, 0, x, FLOOR_Y);
-        // Bandeja de cables en el techo
-        bg.fillStyle(0x3a4a5a);
-        bg.fillRect(0, 4, WORLD_W, 18);
-        bg.lineStyle(3, 0x4080d0, 1.0); bg.lineBetween(0,  8, WORLD_W,  8);
-        bg.lineStyle(3, 0xe84057, 1.0); bg.lineBetween(0, 12, WORLD_W, 12);
-        bg.lineStyle(3, 0xf0d020, 1.0); bg.lineBetween(0, 16, WORLD_W, 16);
-        bg.lineStyle(3, 0x6de882, 1.0); bg.lineBetween(0, 20, WORLD_W, 20);
-        // Franja amarilla de seguridad (con huecos en los agujeros)
-        bg.fillStyle(0xf0d020);
-        let segX = 0;
-        HOLES.forEach(h => {
-            bg.fillRect(segX, 416, h.x1 - segX, 2);
-            // Borde de peligro en los agujeros: franja roja/amarilla
-            bg.fillStyle(0xe84057);
-            bg.fillRect(h.x1 - 4, 416, 4, 8);
-            bg.fillRect(h.x2,     416, 4, 8);
-            bg.fillStyle(0xf0d020);
-            segX = h.x2;
-        });
-        bg.fillRect(segX, 416, WORLD_W - segX, 2);
-
-        // --------------------------------------------------------
-        //  SUELO — tile_floor omitiendo agujeros
-        // --------------------------------------------------------
-        this.floorGroup = this.physics.add.staticGroup();
-        for (let x = 0; x < WORLD_W; x += 32) {
-            if (!inHole(x)) {
-                this.floorGroup.create(x + 16, FLOOR_CY, 'tile_floor');
-            }
-        }
-
-        // --------------------------------------------------------
-        //  PLATAFORMAS
-        // --------------------------------------------------------
-        this.platformGroup = this.physics.add.staticGroup();
-
-        // — Plataforma 1 (existente) x=400-608, top y=300 —
-        for (let x = 400; x < 608; x += 32) {
-            this.platformGroup.create(x + 16, 316, 'tile_platform');
-        }
-        this.platformGroup.create(384, 348, 'tile_platform');  // escalón
-
-        // — Plataforma A (nueva) x=900-1092, top y=310 —
-        //   Accesible desde el suelo con un salto
-        for (let x = 900; x < 1092; x += 32) {
-            this.platformGroup.create(x + 16, 326, 'tile_platform');
-        }
-        this.platformGroup.create(876, 358, 'tile_platform');  // escalón acceso
-
-        // — Plataforma B (nueva) x=1350-1510, top y=280 —
-        //   Solo accesible saltando desde la Plataforma A
-        for (let x = 1350; x < 1510; x += 32) {
-            this.platformGroup.create(x + 16, 296, 'tile_platform');
-        }
-        // Escalones de acceso a B desde el suelo (requieren llegar post-Hole1)
-        this.platformGroup.create(1270, 356, 'tile_platform');
-        this.platformGroup.create(1310, 322, 'tile_platform');
-
-        // --------------------------------------------------------
-        //  EQUIPOS — sprites decorativos sobre el suelo
-        //  centro Y = FLOOR_Y - mitad_altura (64px → -32)
-        // --------------------------------------------------------
-        const EQ_Y = FLOOR_Y - 32;
-        this.add.image(300,  EQ_Y, 'equip_panel');           // deco
-        this.add.image(500,  EQ_Y, 'equip_panel_rust');      // Quiz 1
-        this.add.image(750,  EQ_Y, 'equip_panel');           // Quiz 2
-        this.add.image(1000, EQ_Y, 'equip_panel');           // Quiz 3 relé
-        this.add.image(1100, EQ_Y, 'equip_ups');             // deco
-        this.add.image(1400, EQ_Y, 'equip_panel');           // deco zona sin monit.
-        this.add.image(1870, EQ_Y, 'equip_panel');           // Quiz 4 — después Hole 2
-        this.add.image(2000, EQ_Y, 'equip_panel');           // deco final
-
-        const labelStyle = { fontSize: '7px', fontFamily: FONT, fontStyle: 'bold' };
-        this.add.text(750,  FLOOR_Y - 72, 'SIN CONTRATO',  { ...labelStyle, fill: '#e84057' }).setOrigin(0.5);
-        this.add.text(1000, FLOOR_Y - 72, 'RELÉ ANTIGUO',  { ...labelStyle, fill: '#f0a030' }).setOrigin(0.5);
-        this.add.text(1870, FLOOR_Y - 72, 'SIN MONIT.',    { ...labelStyle, fill: '#f0a030' }).setOrigin(0.5);
-
-        // Señales de peligro en los bordes de los agujeros
-        HOLES.forEach(h => {
-            // Letrero "⚠" en el borde izquierdo y derecho del agujero
-            this.add.text(h.x1 - 16, FLOOR_Y - 20, '⚠', {
-                fontSize: '14px', fill: '#f0d020', fontFamily: FONT
-            }).setOrigin(0.5);
-            this.add.text(h.x2 + 16, FLOOR_Y - 20, '⚠', {
-                fontSize: '14px', fill: '#f0d020', fontFamily: FONT
-            }).setOrigin(0.5);
-        });
-
-        // --------------------------------------------------------
-        //  LEADS VÁLIDOS — sprites SIN física para evitar gravedad
-        //  La detección de proximidad se hace manualmente en update()
-        //  y=370 → distancia al jugador en suelo ≈ 32px (< 60px OK)
-        // --------------------------------------------------------
-        this.validLeads = [];
-        const VALID_LEAD_DATA = [
-            { x: 500,  y: 370, quizId: 1 },   // suelo — panel corroído
-            { x: 750,  y: 370, quizId: 2 },   // suelo — sin contrato
-            { x: 970,  y: 295, quizId: 3 },   // Plataforma A — relé antiguo
-            { x: 1870, y: 370, quizId: 4 },   // suelo — después de Hole 2
-        ];
-        VALID_LEAD_DATA.forEach(ld => {
-            const lead = this.add.sprite(ld.x, ld.y, 'lead_valid');
-            lead.quizId = ld.quizId;
-            lead.alive = true;
-            this.tweens.add({
-                targets: lead, y: ld.y - 8,
-                duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
-            });
-            this.validLeads.push(lead);
-        });
-
-        // --------------------------------------------------------
-        //  LEADS INVÁLIDOS — sprites SIN física
-        //  Proximidad manual (< 22px = "toca") en update()
-        // --------------------------------------------------------
-        this.invalidLeads = [];
-        const INVALID_LEAD_DATA = [
-            { x: 650,  y: 370, reason: '❌ LEAD INVÁLIDO: Las renovaciones de contratos NO cuentan como F2O' },
-            { x: 1420, y: 265, reason: '❌ LEAD INVÁLIDO: Los leads de campañas marketing no son del detector' },
-        ];
-        INVALID_LEAD_DATA.forEach(ld => {
-            const lead = this.add.sprite(ld.x, ld.y, 'lead_invalid');
-            lead.reason = ld.reason;
-            lead.alive = true;
-            this.tweens.add({
-                targets: lead, y: ld.y - 8,
-                duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
-            });
-            this.invalidLeads.push(lead);
-        });
-
-        // --------------------------------------------------------
-        //  CHARCOS — grupo de peligros con física (overlap)
-        //  Zona de colisión ajustada a la forma visual (48x8)
-        // --------------------------------------------------------
-        const WAT_Y = FLOOR_Y - 6;
-        this.hazardGroup = this.physics.add.staticGroup();
-        const w1 = this.hazardGroup.create(850,  WAT_Y, 'hazard_water');
-        const w2 = this.hazardGroup.create(1250, WAT_Y, 'hazard_water');
-        // Reducir hitbox a la zona central del charco
-        [w1, w2].forEach(w => {
-            w.setSize(40, 8);
-            w.refreshBody();
-        });
+        if (currentWorld === 1)      this._buildWorld1(FONT);
+        else if (currentWorld === 2) this._buildWorld2(FONT);
 
         // --------------------------------------------------------
         //  JUGADOR
@@ -650,7 +694,7 @@ class GameScene extends Phaser.Scene {
         //  CÁMARA
         // --------------------------------------------------------
         // Cámara acotada a la zona visible (no baja hacia los agujeros)
-        this.cameras.main.setBounds(0, 0, WORLD_W, 450);
+        this.cameras.main.setBounds(0, 0, 2400, 450);
         this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
 
         // --------------------------------------------------------
@@ -768,6 +812,218 @@ class GameScene extends Phaser.Scene {
                 this.time.delayedCall(900, () => this._endLevel('complete'));
             }
         });
+    }
+
+    // ------------------------------------------------------------
+    //  CONSTRUCTOR DE NIVEL — Mundo 1: Subestación LV
+    // ------------------------------------------------------------
+    _buildWorld1(FONT) {
+        const WORLD_W  = 2400;
+        const WORLD_H  = 650;
+        const FLOOR_Y  = 418;
+        const FLOOR_CY = FLOOR_Y + 16;
+        const HOLES = [
+            { x1: 1120, x2: 1216 },
+            { x1: 1728, x2: 1824 },
+        ];
+        const inHole = (x) => HOLES.some(h => x >= h.x1 && x < h.x2);
+
+        this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
+
+        // Fondo — pared industrial
+        const bg = this.add.graphics();
+        bg.fillStyle(0x2a2a3a);
+        bg.fillRect(0, 0, WORLD_W, FLOOR_Y);
+        bg.lineStyle(1, 0x343444, 0.7);
+        for (let y = 48; y < FLOOR_Y; y += 48) bg.lineBetween(0, y, WORLD_W, y);
+        bg.lineStyle(1, 0x222232, 0.5);
+        for (let x = 160; x < WORLD_W; x += 160) bg.lineBetween(x, 0, x, FLOOR_Y);
+        bg.fillStyle(0x3a4a5a);
+        bg.fillRect(0, 4, WORLD_W, 18);
+        bg.lineStyle(3, 0x4080d0, 1.0); bg.lineBetween(0,  8, WORLD_W,  8);
+        bg.lineStyle(3, 0xe84057, 1.0); bg.lineBetween(0, 12, WORLD_W, 12);
+        bg.lineStyle(3, 0xf0d020, 1.0); bg.lineBetween(0, 16, WORLD_W, 16);
+        bg.lineStyle(3, 0x6de882, 1.0); bg.lineBetween(0, 20, WORLD_W, 20);
+        bg.fillStyle(0xf0d020);
+        let segX = 0;
+        HOLES.forEach(h => {
+            bg.fillRect(segX, 416, h.x1 - segX, 2);
+            bg.fillStyle(0xe84057);
+            bg.fillRect(h.x1 - 4, 416, 4, 8);
+            bg.fillRect(h.x2,     416, 4, 8);
+            bg.fillStyle(0xf0d020);
+            segX = h.x2;
+        });
+        bg.fillRect(segX, 416, WORLD_W - segX, 2);
+
+        // Suelo — tile_floor omitiendo agujeros
+        this.floorGroup = this.physics.add.staticGroup();
+        for (let x = 0; x < WORLD_W; x += 32) {
+            if (!inHole(x)) this.floorGroup.create(x + 16, FLOOR_CY, 'tile_floor');
+        }
+
+        // Plataformas
+        this.platformGroup = this.physics.add.staticGroup();
+        for (let x = 400; x < 608; x += 32) this.platformGroup.create(x + 16, 316, 'tile_platform');
+        this.platformGroup.create(384, 348, 'tile_platform');
+        for (let x = 900; x < 1092; x += 32) this.platformGroup.create(x + 16, 326, 'tile_platform');
+        this.platformGroup.create(876, 358, 'tile_platform');
+        for (let x = 1350; x < 1510; x += 32) this.platformGroup.create(x + 16, 296, 'tile_platform');
+        this.platformGroup.create(1270, 356, 'tile_platform');
+        this.platformGroup.create(1310, 322, 'tile_platform');
+
+        // Equipos decorativos
+        const EQ_Y = FLOOR_Y - 32;
+        this.add.image(300,  EQ_Y, 'equip_panel');
+        this.add.image(500,  EQ_Y, 'equip_panel_rust');
+        this.add.image(750,  EQ_Y, 'equip_panel');
+        this.add.image(1000, EQ_Y, 'equip_panel');
+        this.add.image(1100, EQ_Y, 'equip_ups');
+        this.add.image(1400, EQ_Y, 'equip_panel');
+        this.add.image(1870, EQ_Y, 'equip_panel');
+        this.add.image(2000, EQ_Y, 'equip_panel');
+        const lbl = { fontSize: '7px', fontFamily: FONT, fontStyle: 'bold' };
+        this.add.text(750,  FLOOR_Y - 72, 'SIN CONTRATO', { ...lbl, fill: '#e84057' }).setOrigin(0.5);
+        this.add.text(1000, FLOOR_Y - 72, 'RELÉ ANTIGUO', { ...lbl, fill: '#f0a030' }).setOrigin(0.5);
+        this.add.text(1870, FLOOR_Y - 72, 'SIN MONIT.',   { ...lbl, fill: '#f0a030' }).setOrigin(0.5);
+        HOLES.forEach(h => {
+            this.add.text(h.x1 - 16, FLOOR_Y - 20, '⚠', { fontSize: '14px', fill: '#f0d020', fontFamily: FONT }).setOrigin(0.5);
+            this.add.text(h.x2 + 16, FLOOR_Y - 20, '⚠', { fontSize: '14px', fill: '#f0d020', fontFamily: FONT }).setOrigin(0.5);
+        });
+
+        // Leads válidos
+        this.validLeads = [];
+        [
+            { x: 500,  y: 370, quizId: 1 },
+            { x: 750,  y: 370, quizId: 2 },
+            { x: 970,  y: 295, quizId: 3 },
+            { x: 1870, y: 370, quizId: 4 },
+        ].forEach(ld => {
+            const lead = this.add.sprite(ld.x, ld.y, 'lead_valid');
+            lead.quizId = ld.quizId;
+            lead.alive = true;
+            this.tweens.add({ targets: lead, y: ld.y - 8, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+            this.validLeads.push(lead);
+        });
+
+        // Leads inválidos
+        this.invalidLeads = [];
+        [
+            { x: 650,  y: 370, reason: '❌ LEAD INVÁLIDO: Las renovaciones de contratos NO cuentan como F2O' },
+            { x: 1420, y: 265, reason: '❌ LEAD INVÁLIDO: Los leads de campañas marketing no son del detector' },
+        ].forEach(ld => {
+            const lead = this.add.sprite(ld.x, ld.y, 'lead_invalid');
+            lead.reason = ld.reason;
+            lead.alive = true;
+            this.tweens.add({ targets: lead, y: ld.y - 8, duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+            this.invalidLeads.push(lead);
+        });
+
+        // Charcos
+        const WAT_Y = FLOOR_Y - 6;
+        this.hazardGroup = this.physics.add.staticGroup();
+        const w1 = this.hazardGroup.create(850,  WAT_Y, 'hazard_water');
+        const w2 = this.hazardGroup.create(1250, WAT_Y, 'hazard_water');
+        [w1, w2].forEach(w => { w.setSize(40, 8); w.refreshBody(); });
+    }
+
+    // ------------------------------------------------------------
+    //  CONSTRUCTOR DE NIVEL — Mundo 2: Sala IT / Data Centre
+    // ------------------------------------------------------------
+    _buildWorld2(FONT) {
+        const WORLD_W  = 2400;
+        const FLOOR_Y  = 418;
+        const FLOOR_CY = FLOOR_Y + 16;
+
+        this.physics.world.setBounds(0, 0, WORLD_W, 450);
+
+        // Fondo — data centre (más oscuro, pasillo de racks)
+        const bg = this.add.graphics();
+        bg.fillStyle(0x1a1a2e);
+        bg.fillRect(0, 0, WORLD_W, FLOOR_Y);
+        bg.lineStyle(1, 0x252535, 0.8);
+        for (let y = 48; y < FLOOR_Y; y += 48) bg.lineBetween(0, y, WORLD_W, y);
+        // Marcas de pasillos fríos/calientes (bandas verticales suaves)
+        bg.fillStyle(0x1e1e30);
+        for (let x = 0; x < WORLD_W; x += 400) bg.fillRect(x, 0, 200, FLOOR_Y);
+        // Bandeja de cables — azules de datos
+        bg.fillStyle(0x2a3a4a);
+        bg.fillRect(0, 4, WORLD_W, 18);
+        bg.lineStyle(3, 0x4080d0, 1.0); bg.lineBetween(0,  7, WORLD_W,  7);
+        bg.lineStyle(3, 0x2040a0, 1.0); bg.lineBetween(0, 11, WORLD_W, 11);
+        bg.lineStyle(3, 0x4080d0, 1.0); bg.lineBetween(0, 15, WORLD_W, 15);
+        bg.lineStyle(3, 0x6de882, 1.0); bg.lineBetween(0, 19, WORLD_W, 19);
+        // Franja verde de seguridad en el suelo
+        bg.fillStyle(0x3a8a6a);
+        bg.fillRect(0, 416, WORLD_W, 2);
+
+        // Suelo — tile_floor_dc (suelo técnico de data centre)
+        this.floorGroup = this.physics.add.staticGroup();
+        for (let x = 0; x < WORLD_W; x += 32) {
+            this.floorGroup.create(x + 16, FLOOR_CY, 'tile_floor_dc');
+        }
+
+        // Pasarela elevada: x=800-1000, top y=280 (center y=296), escalón de acceso
+        this.platformGroup = this.physics.add.staticGroup();
+        for (let x = 800; x <= 992; x += 32) this.platformGroup.create(x + 16, 296, 'tile_platform');
+        this.platformGroup.create(776, 356, 'tile_platform');   // escalón acceso
+
+        // Alturas de referencia para centrar sprites sobre el suelo
+        const EQ_64  = FLOOR_Y - 32;   // centro Y sprites 64px (ups, panel)
+        const EQ_80  = FLOOR_Y - 40;   // centro Y sprites 80px (rack)
+        const EQ_48  = FLOOR_Y - 24;   // centro Y sprites 48px (cooling)
+
+        // Equipos
+        this.add.image(250,  EQ_80, 'equip_rack');      // deco
+        this.add.image(350,  EQ_80, 'equip_rack');      // deco
+        this.add.image(500,  EQ_64, 'equip_ups_old');   // Quiz 1 — baterías viejas
+        this.add.image(700,  EQ_48, 'equip_cooling');   // Quiz 2 — cooling sin mantto
+        this.add.image(1050, EQ_80, 'equip_rack');      // Quiz 3 — sin monitorización
+        this.add.image(1350, EQ_80, 'equip_rack');      // Quiz 4 — ampliación
+        this.add.image(1430, EQ_80, 'equip_rack');      // Quiz 4 — grupo racks
+        this.add.image(1600, EQ_64, 'equip_ups');       // deco
+        this.add.image(1900, EQ_48, 'equip_cooling');   // deco
+
+        const lbl = { fontSize: '7px', fontFamily: FONT, fontStyle: 'bold' };
+        this.add.text(500,  EQ_64 - 40, 'BATERÍA 6 AÑOS', { ...lbl, fill: '#e84057' }).setOrigin(0.5);
+        this.add.text(700,  EQ_48 - 32, 'SIN REVISIÓN',   { ...lbl, fill: '#f0a030' }).setOrigin(0.5);
+        this.add.text(1050, EQ_80 - 48, 'SIN MONIT.',     { ...lbl, fill: '#f0a030' }).setOrigin(0.5);
+        this.add.text(1390, EQ_80 - 48, 'AMPLIACIÓN ×10', { ...lbl, fill: '#f0a030' }).setOrigin(0.5);
+
+        // Leads válidos
+        this.validLeads = [];
+        [
+            { x: 500,  y: 370, quizId: 1 },   // UPS con baterías viejas
+            { x: 700,  y: 370, quizId: 2 },   // Cooling sin mantenimiento
+            { x: 1050, y: 370, quizId: 3 },   // Rack sin monitorización
+            { x: 1390, y: 370, quizId: 4 },   // Grupo de racks — ampliación
+        ].forEach(ld => {
+            const lead = this.add.sprite(ld.x, ld.y, 'lead_valid');
+            lead.quizId = ld.quizId;
+            lead.alive = true;
+            this.tweens.add({ targets: lead, y: ld.y - 8, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+            this.validLeads.push(lead);
+        });
+
+        // Leads inválidos
+        this.invalidLeads = [];
+        [
+            { x: 450,  y: 370, reason: '❌ LEAD INVÁLIDO: El contrato ya cubre las piezas' },
+            { x: 1500, y: 370, reason: '❌ LEAD INVÁLIDO: Leads del CCC/ISSR no cuentan como F2O' },
+        ].forEach(ld => {
+            const lead = this.add.sprite(ld.x, ld.y, 'lead_invalid');
+            lead.reason = ld.reason;
+            lead.alive = true;
+            this.tweens.add({ targets: lead, y: ld.y - 8, duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+            this.invalidLeads.push(lead);
+        });
+
+        // Filtraciones de cooling (charcos)
+        const WAT_Y = FLOOR_Y - 6;
+        this.hazardGroup = this.physics.add.staticGroup();
+        const w1 = this.hazardGroup.create(900,  WAT_Y, 'hazard_water');
+        const w2 = this.hazardGroup.create(1200, WAT_Y, 'hazard_water');
+        [w1, w2].forEach(w => { w.setSize(40, 8); w.refreshBody(); });
     }
 
     // ------------------------------------------------------------
@@ -1092,11 +1348,17 @@ class SummaryScene extends Phaser.Scene {
         }).setOrigin(0.5);
         this.tweens.add({ targets: blink, alpha: 0.15, duration: 550, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-        // ENTER: aprobado → TitleScene (futuro: Mundo 2), no aprobado → BriefingScene
+        // ENTER: aprobado → siguiente mundo (o TitleScene si era el último)
+        //        no aprobado → reinicia el mismo mundo
         this.time.delayedCall(200, () => {
             this.input.keyboard.once('keydown-ENTER', () => {
                 if (aprobado) {
-                    this.scene.start('TitleScene');   // iteración 2: irá a Mundo 2
+                    if (currentWorld < 3) {
+                        currentWorld++;
+                        this.scene.start('BriefingScene');
+                    } else {
+                        this.scene.start('TitleScene'); // iteración 3: irá a BossScene
+                    }
                 } else {
                     this.scene.start('BriefingScene'); // reinicia el mismo mundo
                 }
@@ -1119,7 +1381,7 @@ class QuizScene extends Phaser.Scene {
         const W    = 800, H = 450;
         const FONT = 'Courier New, Courier, monospace';
 
-        const quiz = QUIZZES_MUNDO1.find(q => q.id === data.quizId);
+        const quiz = WORLD_DATA[currentWorld].quizzes.find(q => q.id === data.quizId);
         if (!quiz) { this._close(false); return; }
 
         this.answered = false;
