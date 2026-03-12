@@ -512,6 +512,111 @@ class BootScene extends Phaser.Scene {
             tex.refresh();
         }
 
+        // --- CELDA DE MEDIA TENSIÓN — 56x72 ----------------------
+        {
+            const { tex, ctx } = mkTex('equip_celda_hv', 56, 72);
+            r(ctx,  0,  0, 56, 72, '#3a4a5a');   // cuerpo gris oscuro
+            r(ctx,  0,  0, 56,  2, '#2a3a4a');   // bordes
+            r(ctx,  0,  0,  2, 72, '#2a3a4a');
+            r(ctx, 54,  0,  2, 72, '#2a3a4a');
+            r(ctx,  0, 70, 56,  2, '#2a3a4a');
+            // Puerta frontal
+            r(ctx,  6, 10, 44, 52, '#2a3a4a');   // contorno puerta
+            r(ctx,  8, 12, 40, 48, '#3a4a5a');   // interior puerta
+            r(ctx, 46, 30,  4,  8, '#5a6a7a');   // manija derecha
+            // Panel de indicadores superior
+            r(ctx,  8,  4, 40,  4, '#1a2a3a');
+            r(ctx, 10,  5,  4,  2, '#3DCD58');   // LED verde
+            r(ctx, 24,  5,  4,  2, '#e84057');   // LED rojo
+            r(ctx, 38,  5,  4,  2, '#f0a030');   // LED naranja
+            // Triángulo peligro AT — amarillo con rayo
+            ctx.fillStyle = '#f0d020';
+            ctx.beginPath();
+            ctx.moveTo(28, 18); ctx.lineTo(16, 40); ctx.lineTo(40, 40);
+            ctx.closePath(); ctx.fill();
+            r(ctx, 26, 22,  4, 12, '#1a1a2e');   // rayo negro
+            r(ctx, 24, 34,  8,  4, '#1a1a2e');
+            // Rejillas ventilación inferiores
+            for (let gy = 56; gy < 66; gy += 4) r(ctx, 10, gy, 36, 2, '#2a3a4a');
+            tex.refresh();
+        }
+
+        // --- TRANSFORMADOR — 64x56 --------------------------------
+        {
+            const { tex, ctx } = mkTex('equip_transformer', 64, 56);
+            // Base gris
+            r(ctx,  0, 44, 64, 12, '#4a4a5a');
+            r(ctx,  0, 42, 64,  4, '#3a3a4a');
+            // Cuerpo cobre/marrón
+            r(ctx, 10,  6, 44, 38, '#c87830');
+            r(ctx, 10,  6, 44,  2, '#a06020');   // borde sup
+            r(ctx, 10,  6,  2, 38, '#a06020');   // borde izq
+            r(ctx, 52,  6,  2, 38, '#a06020');   // borde der
+            r(ctx, 10, 42, 44,  2, '#a06020');   // borde inf
+            // Aletas refrigeración izq
+            for (let i = 0; i < 5; i++) {
+                r(ctx,  2, 10 + i * 6,  8,  4, '#8a6828');
+                r(ctx,  4, 10 + i * 6,  4,  4, '#c87830');
+            }
+            // Aletas refrigeración der
+            for (let i = 0; i < 5; i++) {
+                r(ctx, 54, 10 + i * 6,  8,  4, '#8a6828');
+                r(ctx, 54, 10 + i * 6,  4,  4, '#c87830');
+            }
+            // Bornes superiores (3 cilindros)
+            r(ctx, 16,  0,  8,  8, '#7a8a9a');
+            r(ctx, 28,  0,  8,  8, '#7a8a9a');
+            r(ctx, 40,  0,  8,  8, '#7a8a9a');
+            r(ctx, 19,  1,  2,  6, '#5a6a7a');
+            r(ctx, 31,  1,  2,  6, '#5a6a7a');
+            r(ctx, 43,  1,  2,  6, '#5a6a7a');
+            // Panel central — visor
+            r(ctx, 20, 18, 24, 16, '#1a2a3a');
+            r(ctx, 22, 20, 20, 12, '#2a3a4a');
+            r(ctx, 24, 22,  4,  3, '#3DCD58');
+            r(ctx, 30, 22,  4,  3, '#f0d020');
+            r(ctx, 36, 22,  4,  3, '#e84057');
+            tex.refresh();
+        }
+
+        // --- ZONA DE ARCO ELÉCTRICO — 32x32 ----------------------
+        {
+            const { tex, ctx } = mkTex('hazard_electric', 32, 32);
+            ctx.globalAlpha = 0.4;
+            r(ctx, 0, 0, 32, 32, '#100800');
+            ctx.globalAlpha = 1.0;
+            // Rayos en X diagonal — amarillo con núcleo blanco
+            for (let i = 0; i < 6; i++) {
+                const bx = 2 + i * 5;
+                r(ctx, bx,      2, 2, 8, '#f0d020');
+                r(ctx, bx + 2, 10, 2, 8, '#f0d020');
+                r(ctx, bx,     18, 2, 6, '#f0d020');
+                r(ctx, bx + 1,  3, 1, 6, '#ffffff');
+            }
+            // Halo exterior sutil
+            ctx.globalAlpha = 0.55;
+            r(ctx,  0,  0, 32,  2, '#f0d020');
+            r(ctx,  0, 30, 32,  2, '#f0d020');
+            ctx.globalAlpha = 1.0;
+            tex.refresh();
+        }
+
+        // --- SUELO SUBESTACIÓN HV — 32x32 ------------------------
+        {
+            const { tex, ctx } = mkTex('tile_floor_hv', 32, 32);
+            r(ctx,  0,  0, 32, 32, '#3a3a4a');   // base muy oscura
+            r(ctx,  0,  0, 32,  1, '#2a2a3a');
+            r(ctx,  0,  0,  1, 32, '#2a2a3a');
+            r(ctx, 31,  0,  1, 32, '#2a2a3a');
+            r(ctx,  0, 31, 32,  1, '#2a2a3a');
+            // Líneas de seguridad rojas
+            r(ctx,  0,  0, 32,  4, '#5a1a1a');   // franja roja sup
+            r(ctx,  2,  1, 28,  2, '#e84057');   // rayo rojo
+            r(ctx,  6, 10, 20,  1, '#4a2020');   // línea interior sutil
+            r(ctx,  6, 20, 20,  1, '#4a2020');
+            tex.refresh();
+        }
+
         // --- Animaciones globales --------------------------------
         this.anims.create({
             key: 'idle',
@@ -680,8 +785,13 @@ class GameScene extends Phaser.Scene {
         this.levelEnded       = false;
         this.inWater          = false;
         this.inSparks         = false;
+        this.inElectric       = false;
         this.invalidsTouched  = 0;
         this.sparksGroup      = null;   // solo Mundo 2+
+        this.electricGroup    = null;   // solo Mundo 3: zonas arco estático
+        this.fallingArcs      = null;   // solo Mundo 3: arcos cayendo del techo
+        this.fallingArcTimer  = null;
+        this.worldWidth       = 2400;   // sobreescrito por _buildWorldN
 
         // --------------------------------------------------------
         //  CONSTRUIR EL NIVEL según currentWorld
@@ -690,6 +800,7 @@ class GameScene extends Phaser.Scene {
         // --------------------------------------------------------
         if (currentWorld === 1)      this._buildWorld1(FONT);
         else if (currentWorld === 2) this._buildWorld2(FONT);
+        else if (currentWorld === 3) this._buildWorld3(FONT);
 
         // --------------------------------------------------------
         //  JUGADOR
@@ -713,6 +824,19 @@ class GameScene extends Phaser.Scene {
                 this.inSparks = true;
             });
         }
+        // Overlap con zonas de arco eléctrico estático (Mundo 3)
+        if (this.electricGroup) {
+            this.physics.add.overlap(this.player, this.electricGroup, () => {
+                this.inElectric = true;
+            });
+        }
+        // Overlap con arcos cayendo del techo (Mundo 3)
+        if (this.fallingArcs) {
+            this.physics.add.overlap(this.player, this.fallingArcs, (player, arc) => {
+                this.inElectric = true;
+                arc.destroy();
+            });
+        }
 
         // (los leads inválidos se detectan por proximidad en update())
 
@@ -720,7 +844,7 @@ class GameScene extends Phaser.Scene {
         //  CÁMARA
         // --------------------------------------------------------
         // Cámara acotada a la zona visible (no baja hacia los agujeros)
-        this.cameras.main.setBounds(0, 0, 2400, 450);
+        this.cameras.main.setBounds(0, 0, this.worldWidth, 450);
         this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
 
         // --------------------------------------------------------
@@ -937,7 +1061,7 @@ class GameScene extends Phaser.Scene {
         // Leads inválidos
         this.invalidLeads = [];
         [
-            { x: 650,  y: 370, reason: '❌ LEAD INVÁLIDO: Las renovaciones de contratos NO cuentan como F2O' },
+            { x: 650,  y: 400, reason: '❌ LEAD INVÁLIDO: Las renovaciones de contratos NO cuentan como F2O' },
             { x: 1420, y: 265, reason: '❌ LEAD INVÁLIDO: Los leads de campañas marketing no son del detector' },
         ].forEach(ld => {
             const lead = this.add.sprite(ld.x, ld.y, 'lead_invalid');
@@ -1062,8 +1186,8 @@ class GameScene extends Phaser.Scene {
         // Leads inválidos
         this.invalidLeads = [];
         [
-            { x: 450,  y: 370, reason: '❌ LEAD INVÁLIDO: El contrato ya cubre las piezas' },
-            { x: 1570, y: 370, reason: '❌ LEAD INVÁLIDO: Leads del CCC/ISSR no cuentan como F2O' },
+            { x: 450,  y: 400, reason: '❌ LEAD INVÁLIDO: El contrato ya cubre las piezas' },
+            { x: 1570, y: 400, reason: '❌ LEAD INVÁLIDO: Leads del CCC/ISSR no cuentan como F2O' },
         ].forEach(ld => {
             const lead = this.add.sprite(ld.x, ld.y, 'lead_invalid');
             lead.reason = ld.reason;
@@ -1084,7 +1208,181 @@ class GameScene extends Phaser.Scene {
         this.sparksGroup = this.physics.add.staticGroup();
         [300, 1200, 1820].forEach(sx => {
             const s = this.sparksGroup.create(sx, WAT_Y, 'hazard_sparks');
-            s.setSize(32, 8); s.refreshBody();
+            s.setScale(2, 1); s.setSize(64, 8); s.refreshBody();
+        });
+    }
+
+    // ------------------------------------------------------------
+    //  CONSTRUCTOR DE NIVEL — Mundo 3: Subestación HV
+    //  Dificultad +20% vs Mundo 2:
+    //   - 3 agujeros (vs 2), plataformas más estrechas
+    //   - Zonas de arco eléctrico estático (0.8/frame)
+    //   - Arcos voltaicos cayendo del techo cada ~2.2s
+    // ------------------------------------------------------------
+    _buildWorld3(FONT) {
+        const WORLD_W  = 2900;
+        const WORLD_H  = 650;
+        const FLOOR_Y  = 418;
+        const FLOOR_CY = FLOOR_Y + 16;
+        // 6 agujeros — lead 4 válido queda entre foso 4 y foso 5
+        const HOLES = [
+            { x1:  448, x2:  576 },   // foso 0 — justo tras lead 1
+            { x1: 1040, x2: 1184 },   // foso 1 — zona media
+            { x1: 1680, x2: 1824 },   // foso 2 — zona AT
+            { x1: 2080, x2: 2240 },   // foso 3 — tras plataforma 2
+            { x1: 2400, x2: 2528 },   // foso 4 — antes del lead final
+            { x1: 2720, x2: 2848 },   // foso 5 — después del lead final
+        ];
+        const inHole = (x) => HOLES.some(h => x >= h.x1 && x < h.x2);
+
+        this.worldWidth = WORLD_W;
+        this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
+
+        // Fondo — muy oscuro, subestación AT
+        const bg = this.add.graphics();
+        bg.fillStyle(0x14141c);
+        bg.fillRect(0, 0, WORLD_W, FLOOR_Y);
+        bg.lineStyle(1, 0x1e1e28, 0.7);
+        for (let y = 48; y < FLOOR_Y; y += 48) bg.lineBetween(0, y, WORLD_W, y);
+        bg.lineStyle(1, 0x1a1a22, 0.5);
+        for (let x = 160; x < WORLD_W; x += 160) bg.lineBetween(x, 0, x, FLOOR_Y);
+        // Bus de alta tensión — 3 barras amarillas en el techo
+        bg.fillStyle(0x1e1e2e);
+        bg.fillRect(0, 0, WORLD_W, 26);
+        bg.lineStyle(4, 0xf0d020, 1.0); bg.lineBetween(0,  6, WORLD_W,  6);
+        bg.lineStyle(4, 0xf0d020, 1.0); bg.lineBetween(0, 13, WORLD_W, 13);
+        bg.lineStyle(4, 0xf0d020, 1.0); bg.lineBetween(0, 20, WORLD_W, 20);
+        // Señales AT colgando del techo cada 380px
+        bg.fillStyle(0xe84057);
+        for (let x = 250; x < WORLD_W; x += 380) {
+            bg.fillTriangle(x, 32, x - 14, 56, x + 14, 56);
+            bg.fillStyle(0xf0d020);
+            bg.fillRect(x - 1, 37, 2, 10); bg.fillRect(x - 3, 47, 6, 3);
+            bg.fillStyle(0xe84057);
+        }
+        // Franja roja de suelo AT con marcadores en cada agujero
+        bg.fillStyle(0xe84057);
+        let segX = 0;
+        HOLES.forEach(h => {
+            bg.fillRect(segX, 415, h.x1 - segX, 3);
+            bg.fillStyle(0xf0d020);
+            bg.fillRect(h.x1 - 4, 415, 4, 9);
+            bg.fillRect(h.x2,     415, 4, 9);
+            bg.fillStyle(0xe84057);
+            segX = h.x2;
+        });
+        bg.fillRect(segX, 415, WORLD_W - segX, 3);
+
+        // Suelo HV
+        this.floorGroup = this.physics.add.staticGroup();
+        for (let x = 0; x < WORLD_W; x += 32) {
+            if (!inHole(x)) this.floorGroup.create(x + 16, FLOOR_CY, 'tile_floor_hv');
+        }
+
+        // Plataformas
+        this.platformGroup = this.physics.add.staticGroup();
+        // Plataforma 1: x=1200-1488, y=276 — lead 3 está aquí (requiere subir)
+        for (let x = 1200; x <= 1488; x += 32) this.platformGroup.create(x + 16, 276, 'tile_platform');
+        this.platformGroup.create(1168, 330, 'tile_platform');  // escalón 1 plat1 (flota sobre foso 1)
+        this.platformGroup.create(1192, 302, 'tile_platform');  // escalón 2 plat1
+        // Plataforma 2: x=1900-2048, y=316 — puente tras foso 2
+        for (let x = 1900; x <= 2048; x += 32) this.platformGroup.create(x + 16, 316, 'tile_platform');
+        this.platformGroup.create(1856, 358, 'tile_platform');  // escalón acceso plat2
+        this.platformGroup.create(1880, 332, 'tile_platform');
+
+        // Equipos (posiciones verificadas fuera de agujeros)
+        const EQ_HV = FLOOR_Y - 36;  // celda_hv: 72px centrada en suelo
+        const EQ_TF = FLOOR_Y - 28;  // transformer: 56px
+        this.add.image(300,  EQ_HV, 'equip_celda_hv');   // Lead 1 — celdas MT antiguas
+        this.add.image(640,  EQ_HV, 'equip_celda_hv');   // deco (tras foso 0)
+        this.add.image(900,  EQ_HV, 'equip_celda_hv');   // Lead 2 — sin conmutación
+        this.add.image(1340, 248,   'equip_transformer'); // Lead 3 — sobre plataforma 1
+        this.add.image(1870, EQ_HV, 'equip_celda_hv');   // deco (tras foso 2)
+        this.add.image(2340, EQ_HV, 'equip_celda_hv');   // deco (entre foso 3 y 4)
+        this.add.image(2620, FLOOR_Y - 24, 'equip_panel').setScale(0.6);  // Lead 4 — entre foso 4 y 5
+        this.add.image(2870, EQ_TF, 'equip_transformer');// deco final (tras foso 5)
+
+        const lbl = { fontSize: '7px', fontFamily: FONT, fontStyle: 'bold' };
+        this.add.text(300,  EQ_HV - 46, '+25 AÑOS',    { ...lbl, fill: '#e84057' }).setOrigin(0.5);
+        this.add.text(900,  EQ_HV - 46, 'SIN AUT.',    { ...lbl, fill: '#f0a030' }).setOrigin(0.5);
+        this.add.text(1340, 200,         'SIN MONIT.',  { ...lbl, fill: '#f0a030' }).setOrigin(0.5);
+        this.add.text(2620, FLOOR_Y - 46, 'SIN FORM.', { ...lbl, fill: '#e84057' }).setOrigin(0.5);
+        HOLES.forEach(h => {
+            this.add.text(h.x1 - 16, FLOOR_Y - 20, '⚡', { fontSize: '14px', fill: '#f0d020', fontFamily: FONT }).setOrigin(0.5);
+            this.add.text(h.x2 + 16, FLOOR_Y - 20, '⚡', { fontSize: '14px', fill: '#f0d020', fontFamily: FONT }).setOrigin(0.5);
+        });
+
+        // Leads válidos — lead 4 entre foso 4 (x2=2528) y foso 5 (x1=2720)
+        this.validLeads = [];
+        [
+            { x: 300,  y: 370, quizId: 1 },  // celdas MT antiguas
+            { x: 900,  y: 370, quizId: 2 },  // sin conmutación
+            { x: 1340, y: 248, quizId: 3 },  // transformador sin monit. (plataforma 1)
+            { x: 2620, y: 370, quizId: 4 },  // personal sin formación — entre dos huecos
+        ].forEach(ld => {
+            const lead = this.add.sprite(ld.x, ld.y, 'lead_valid');
+            lead.quizId = ld.quizId;
+            lead.alive = true;
+            this.tweens.add({ targets: lead, y: ld.y - 8, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+            this.validLeads.push(lead);
+        });
+
+        // Leads inválidos — todos ANTES del lead 4 válido (x < 2528)
+        this.invalidLeads = [];
+        [
+            { x: 620,  y: 400, reason: '❌ LEAD INVÁLIDO: Renovaciones de contratos NO cuentan como F2O' },
+            { x: 1550, y: 400, reason: '❌ LEAD INVÁLIDO: Sin confirmación del cliente a más de 1 año' },
+            { x: 2000, y: 400, reason: '❌ LEAD INVÁLIDO: Lead ya existe en bFS — duplicado no válido' },
+            { x: 2300, y: 400, reason: '❌ LEAD INVÁLIDO: Lead proveniente de campaña de marketing' },
+        ].forEach(ld => {
+            const lead = this.add.sprite(ld.x, ld.y, 'lead_invalid');
+            lead.reason = ld.reason;
+            lead.alive = true;
+            this.tweens.add({ targets: lead, y: ld.y - 8, duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+            this.invalidLeads.push(lead);
+        });
+
+        // Charcos — 4 posiciones grandes (×2.5 de ancho)
+        const WAT_Y = FLOOR_Y - 6;
+        this.hazardGroup = this.physics.add.staticGroup();
+        [380, 820, 1290, 1950].forEach(wx => {
+            const w = this.hazardGroup.create(wx, WAT_Y, 'hazard_water');
+            w.setScale(2.5, 1); w.setSize(110, 8); w.refreshBody();
+        });
+
+        // Zonas de arco eléctrico estático — 0.8 HP/frame
+        this.electricGroup = this.physics.add.staticGroup();
+        [1100, 2560].forEach(ex => {
+            const e = this.electricGroup.create(ex, WAT_Y - 8, 'hazard_electric');
+            e.setScale(2.0, 0.6); e.setSize(56, 18); e.refreshBody();
+            this.tweens.add({ targets: e, alpha: 0.35, duration: 260, yoyo: true, repeat: -1 });
+        });
+
+        // Arcos voltaicos cayendo del techo (+20% frecuencia, +30% velocidad)
+        this.fallingArcs = this.physics.add.group();
+        this.fallingArcTimer = this.time.addEvent({
+            delay: 900,
+            loop: true,
+            callback: () => {
+                if (this.levelEnded) return;
+                const camX = this.cameras.main.scrollX;
+                const spawnX = Phaser.Math.Between(
+                    Math.max(50,           camX + 60),
+                    Math.min(WORLD_W - 50, camX + 740)
+                );
+                const arc = this.fallingArcs.create(spawnX, 28, 'hazard_electric');
+                arc.body.allowGravity = false;
+                arc.body.setSize(22, 22);
+                arc.setVelocityY(Phaser.Math.Between(360, 620));
+                arc.setTint(0xffff44);
+                // Aviso visual en techo
+                const warn = this.add.text(spawnX, 36, '⚡', {
+                    fontSize: '12px', fill: '#f0d020',
+                    fontFamily: 'Courier New, Courier, monospace'
+                }).setOrigin(0.5).setDepth(5);
+                this.time.delayedCall(350, () => { if (warn.active) warn.destroy(); });
+                this.time.delayedCall(2500, () => { if (arc && arc.active) arc.destroy(); });
+            }
         });
     }
 
@@ -1115,6 +1413,7 @@ class GameScene extends Phaser.Scene {
         if (this.levelEnded) return;
         this.levelEnded = true;
         this.timerEvent.remove();
+        if (this.fallingArcTimer) this.fallingArcTimer.remove();
         this.player.setVelocity(0, 0);
         this.inspectPrompt.setVisible(false);
         // Pequeña pausa antes de cambiar de escena para que el jugador vea el último estado
@@ -1155,7 +1454,7 @@ class GameScene extends Phaser.Scene {
         lead.setVisible(false);
         this.invalidsTouched++;
         this.score  -= 50;              // puede ir a negativo
-        this.health -= 10;
+        this.health -= 20;
         this._drawHealthBar();
         this.cameras.main.flash(300, 255, 0, 0);
         const W = this.scale.width, H = this.scale.height;
@@ -1242,8 +1541,15 @@ class GameScene extends Phaser.Scene {
         }
 
         // — Evitar que el jugador salga por los laterales —
-        if (this.player.x < 16)   this.player.setX(16);
-        if (this.player.x > 2384) this.player.setX(2384); // 2400 - 16
+        if (this.player.x < 16)                       this.player.setX(16);
+        if (this.player.x > this.worldWidth - 16)     this.player.setX(this.worldWidth - 16);
+
+        // — Destruir arcos que lleguen al suelo (Mundo 3) —
+        if (this.fallingArcs) {
+            this.fallingArcs.getChildren().forEach(arc => {
+                if (arc.active && arc.y > 440) arc.destroy();
+            });
+        }
 
         // — Peligros continuos —
         if (this.inWater) {
@@ -1254,10 +1560,19 @@ class GameScene extends Phaser.Scene {
             this.health -= 0.5;   // descarga eléctrica — más dañina que el charco
             if (this.health <= 0) { this.health = 0; this._endLevel('gameover'); }
         }
+        if (this.inElectric) {
+            this.health -= 0.8;   // arco HV — el más dañino
+            if (this.health <= 0) { this.health = 0; this._endLevel('gameover'); }
+        }
         // Tinte del jugador según peligro activo
-        this.player.setTint(this.inSparks ? 0xffdd00 : this.inWater ? 0xff6666 : 0xffffff);
-        this.inWater  = false;   // se reactiva vía overlap si sigue en contacto
-        this.inSparks = false;
+        this.player.setTint(
+            this.inElectric ? 0xffff44 :
+            this.inSparks   ? 0xffdd00 :
+            this.inWater    ? 0xff6666 : 0xffffff
+        );
+        this.inWater    = false;   // se reactiva vía overlap si sigue en contacto
+        this.inSparks   = false;
+        this.inElectric = false;
 
         // — Detección de proximidad: leads válidos —
         let nearLead = null;
@@ -1322,7 +1637,7 @@ class SummaryScene extends Phaser.Scene {
             fontSize: '22px', fill: tcolor, fontFamily: FONT, fontStyle: 'bold'
         }).setOrigin(0.5);
 
-        this.add.text(W / 2, H * 0.18, 'MUNDO 1 — SUBESTACIÓN LV', {
+        this.add.text(W / 2, H * 0.18, `MUNDO ${currentWorld} — ${WORLD_DATA[currentWorld].nombre}`, {
             fontSize: '12px', fill: '#7a7a8e', fontFamily: FONT
         }).setOrigin(0.5);
 
@@ -1348,7 +1663,7 @@ class SummaryScene extends Phaser.Scene {
             },
             {
                 label: 'Leads inválidos tocados:',
-                val:   `${data.invalidTouched}/2`,
+                val:   `${data.invalidTouched}/${currentWorld === 3 ? 4 : 2}`,
                 col:   data.invalidTouched === 0 ? '#3DCD58' : '#e84057'
             },
             {
@@ -1410,8 +1725,11 @@ class SummaryScene extends Phaser.Scene {
             align: 'center', lineSpacing: 4
         }).setOrigin(0.5);
 
-        // Texto parpadeante
-        const blink = this.add.text(W / 2, H * 0.95, '▶  Pulsa ENTER para continuar', {
+        // Texto parpadeante — diferente si es el último mundo
+        const blinkTxt = aprobado && currentWorld === 3
+            ? '▶  Pulsa ENTER para la prueba final'
+            : '▶  Pulsa ENTER para continuar';
+        const blink = this.add.text(W / 2, H * 0.95, blinkTxt, {
             fontSize: '12px', fill: '#6de882', fontFamily: FONT
         }).setOrigin(0.5);
         this.tweens.add({ targets: blink, alpha: 0.15, duration: 550, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
