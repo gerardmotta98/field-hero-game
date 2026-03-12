@@ -477,6 +477,22 @@ class BootScene extends Phaser.Scene {
             tex.refresh();
         }
 
+        // --- DESCARGA ELÉCTRICA — peligro 40x12 ------------------
+        {
+            const { tex, ctx } = mkTex('hazard_sparks', 40, 12);
+            ctx.globalAlpha = 0.75;
+            r(ctx, 2, 2, 36, 8, '#1a1a0a');       // base oscuro
+            ctx.globalAlpha = 1.0;
+            // Rayo en zigzag (amarillo con núcleo blanco)
+            for (let i = 0; i < 5; i++) {
+                const bx = 5 + i * 6;
+                r(ctx, bx,     2, 3, 4, '#f0d020');
+                r(ctx, bx + 3, 5, 3, 4, '#f0d020');
+                r(ctx, bx + 1, 3, 1, 2, '#ffffff'); // núcleo blanco
+            }
+            tex.refresh();
+        }
+
         // --- SUELO DATA CENTRE — 32x32 ---------------------------
         {
             const { tex, ctx } = mkTex('tile_floor_dc', 32, 32);
@@ -661,7 +677,9 @@ class GameScene extends Phaser.Scene {
         this.timeLeft         = WORLD_DATA[currentWorld].tiempo;
         this.levelEnded       = false;
         this.inWater          = false;
+        this.inSparks         = false;
         this.invalidsTouched  = 0;
+        this.sparksGroup      = null;   // solo Mundo 2+
 
         // --------------------------------------------------------
         //  CONSTRUIR EL NIVEL según currentWorld
@@ -687,6 +705,12 @@ class GameScene extends Phaser.Scene {
         this.physics.add.overlap(this.player, this.hazardGroup, () => {
             this.inWater = true;
         });
+        // Overlap con descargas eléctricas (Mundo 2+)
+        if (this.sparksGroup) {
+            this.physics.add.overlap(this.player, this.sparksGroup, () => {
+                this.inSparks = true;
+            });
+        }
 
         // (los leads inválidos se detectan por proximidad en update())
 
@@ -787,7 +811,9 @@ class GameScene extends Phaser.Scene {
 
         // --------------------------------------------------------
         //  EVENTO: resultado del quiz (emitido por QuizScene)
+        //  off() primero para evitar listeners duplicados en reinicios
         // --------------------------------------------------------
+        this.events.off('quiz-complete');
         this.events.on('quiz-complete', ({ correct }) => {
             this.leadsAttempted++;
             if (correct) {
@@ -929,74 +955,100 @@ class GameScene extends Phaser.Scene {
 
     // ------------------------------------------------------------
     //  CONSTRUCTOR DE NIVEL — Mundo 2: Sala IT / Data Centre
+    //  Dificultad +20%: 2 agujeros, 2 plataformas, lead 3 en altura,
+    //  descargas eléctricas + filtraciones de cooling
     // ------------------------------------------------------------
     _buildWorld2(FONT) {
         const WORLD_W  = 2400;
+        const WORLD_H  = 650;   // extendido para agujeros
         const FLOOR_Y  = 418;
         const FLOOR_CY = FLOOR_Y + 16;
+        // Agujeros: shaft de mantenimiento y canal de cableado
+        const HOLES = [
+            { x1: 1120, x2: 1216 },
+            { x1: 1728, x2: 1824 },
+        ];
+        const inHole = (x) => HOLES.some(h => x >= h.x1 && x < h.x2);
 
-        this.physics.world.setBounds(0, 0, WORLD_W, 450);
+        this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
 
-        // Fondo — data centre (más oscuro, pasillo de racks)
+        // Fondo — data centre oscuro con pasillos caliente/frío
         const bg = this.add.graphics();
         bg.fillStyle(0x1a1a2e);
         bg.fillRect(0, 0, WORLD_W, FLOOR_Y);
         bg.lineStyle(1, 0x252535, 0.8);
         for (let y = 48; y < FLOOR_Y; y += 48) bg.lineBetween(0, y, WORLD_W, y);
-        // Marcas de pasillos fríos/calientes (bandas verticales suaves)
-        bg.fillStyle(0x1e1e30);
+        bg.fillStyle(0x1e1e32);
         for (let x = 0; x < WORLD_W; x += 400) bg.fillRect(x, 0, 200, FLOOR_Y);
-        // Bandeja de cables — azules de datos
         bg.fillStyle(0x2a3a4a);
         bg.fillRect(0, 4, WORLD_W, 18);
         bg.lineStyle(3, 0x4080d0, 1.0); bg.lineBetween(0,  7, WORLD_W,  7);
         bg.lineStyle(3, 0x2040a0, 1.0); bg.lineBetween(0, 11, WORLD_W, 11);
         bg.lineStyle(3, 0x4080d0, 1.0); bg.lineBetween(0, 15, WORLD_W, 15);
         bg.lineStyle(3, 0x6de882, 1.0); bg.lineBetween(0, 19, WORLD_W, 19);
-        // Franja verde de seguridad en el suelo
+        // Franja verde de seguridad con huecos en agujeros
         bg.fillStyle(0x3a8a6a);
-        bg.fillRect(0, 416, WORLD_W, 2);
+        let segX = 0;
+        HOLES.forEach(h => {
+            bg.fillRect(segX, 416, h.x1 - segX, 2);
+            bg.fillStyle(0xe84057);
+            bg.fillRect(h.x1 - 4, 416, 4, 8);
+            bg.fillRect(h.x2,     416, 4, 8);
+            bg.fillStyle(0x3a8a6a);
+            segX = h.x2;
+        });
+        bg.fillRect(segX, 416, WORLD_W - segX, 2);
 
-        // Suelo — tile_floor_dc (suelo técnico de data centre)
+        // Suelo — tile_floor_dc omitiendo agujeros
         this.floorGroup = this.physics.add.staticGroup();
         for (let x = 0; x < WORLD_W; x += 32) {
-            this.floorGroup.create(x + 16, FLOOR_CY, 'tile_floor_dc');
+            if (!inHole(x)) this.floorGroup.create(x + 16, FLOOR_CY, 'tile_floor_dc');
         }
 
-        // Pasarela elevada: x=800-1000, top y=280 (center y=296), escalón de acceso
+        // Plataformas
         this.platformGroup = this.physics.add.staticGroup();
+        // DC-A: x=800-1000, top y=280 — lead 3 está aquí (requiere salto)
         for (let x = 800; x <= 992; x += 32) this.platformGroup.create(x + 16, 296, 'tile_platform');
-        this.platformGroup.create(776, 356, 'tile_platform');   // escalón acceso
-
-        // Alturas de referencia para centrar sprites sobre el suelo
-        const EQ_64  = FLOOR_Y - 32;   // centro Y sprites 64px (ups, panel)
-        const EQ_80  = FLOOR_Y - 40;   // centro Y sprites 80px (rack)
-        const EQ_48  = FLOOR_Y - 24;   // centro Y sprites 48px (cooling)
+        this.platformGroup.create(776, 356, 'tile_platform');   // escalón acceso DC-A
+        // DC-B: x=1280-1472, top y=300 — puente tras Hole 1
+        for (let x = 1280; x <= 1472; x += 32) this.platformGroup.create(x + 16, 316, 'tile_platform');
+        this.platformGroup.create(1232, 358, 'tile_platform');  // escalón 1 DC-B
+        this.platformGroup.create(1256, 330, 'tile_platform');  // escalón 2 DC-B
 
         // Equipos
-        this.add.image(250,  EQ_80, 'equip_rack');      // deco
-        this.add.image(350,  EQ_80, 'equip_rack');      // deco
-        this.add.image(500,  EQ_64, 'equip_ups_old');   // Quiz 1 — baterías viejas
-        this.add.image(700,  EQ_48, 'equip_cooling');   // Quiz 2 — cooling sin mantto
-        this.add.image(1050, EQ_80, 'equip_rack');      // Quiz 3 — sin monitorización
-        this.add.image(1350, EQ_80, 'equip_rack');      // Quiz 4 — ampliación
-        this.add.image(1430, EQ_80, 'equip_rack');      // Quiz 4 — grupo racks
+        const EQ_64 = FLOOR_Y - 32;
+        const EQ_80 = FLOOR_Y - 40;
+        const EQ_48 = FLOOR_Y - 24;
+        this.add.image(250,  EQ_80, 'equip_rack');
+        this.add.image(350,  EQ_80, 'equip_rack');
+        this.add.image(500,  EQ_64, 'equip_ups_old');   // Lead 1
+        this.add.image(700,  EQ_48, 'equip_cooling');   // Lead 2
+        this.add.image(900,  EQ_80, 'equip_rack');      // Lead 3 (en plataforma)
+        this.add.image(1350, EQ_80, 'equip_rack');      // deco
         this.add.image(1600, EQ_64, 'equip_ups');       // deco
-        this.add.image(1900, EQ_48, 'equip_cooling');   // deco
+        this.add.image(1870, EQ_80, 'equip_rack');      // Lead 4 (grupo ampliación)
+        this.add.image(1950, EQ_80, 'equip_rack');
+        this.add.image(2050, EQ_48, 'equip_cooling');
+        this.add.image(2150, EQ_80, 'equip_rack');
 
         const lbl = { fontSize: '7px', fontFamily: FONT, fontStyle: 'bold' };
-        this.add.text(500,  EQ_64 - 40, 'BATERÍA 6 AÑOS', { ...lbl, fill: '#e84057' }).setOrigin(0.5);
-        this.add.text(700,  EQ_48 - 32, 'SIN REVISIÓN',   { ...lbl, fill: '#f0a030' }).setOrigin(0.5);
-        this.add.text(1050, EQ_80 - 48, 'SIN MONIT.',     { ...lbl, fill: '#f0a030' }).setOrigin(0.5);
-        this.add.text(1390, EQ_80 - 48, 'AMPLIACIÓN ×10', { ...lbl, fill: '#f0a030' }).setOrigin(0.5);
+        this.add.text(500,  EQ_64 - 40, 'BATERÍA 6 AÑOS',  { ...lbl, fill: '#e84057' }).setOrigin(0.5);
+        this.add.text(700,  EQ_48 - 32, 'SIN REVISIÓN',    { ...lbl, fill: '#f0a030' }).setOrigin(0.5);
+        this.add.text(900,  EQ_80 - 48, 'SIN MONIT.',      { ...lbl, fill: '#f0a030' }).setOrigin(0.5);
+        this.add.text(1910, EQ_80 - 48, 'AMPLIACIÓN ×10',  { ...lbl, fill: '#f0a030' }).setOrigin(0.5);
+        // Señales de agujero
+        HOLES.forEach(h => {
+            this.add.text(h.x1 - 16, FLOOR_Y - 20, '⚠', { fontSize: '14px', fill: '#f0d020', fontFamily: FONT }).setOrigin(0.5);
+            this.add.text(h.x2 + 16, FLOOR_Y - 20, '⚠', { fontSize: '14px', fill: '#f0d020', fontFamily: FONT }).setOrigin(0.5);
+        });
 
         // Leads válidos
         this.validLeads = [];
         [
-            { x: 500,  y: 370, quizId: 1 },   // UPS con baterías viejas
-            { x: 700,  y: 370, quizId: 2 },   // Cooling sin mantenimiento
-            { x: 1050, y: 370, quizId: 3 },   // Rack sin monitorización
-            { x: 1390, y: 370, quizId: 4 },   // Grupo de racks — ampliación
+            { x: 500,  y: 370, quizId: 1 },   // suelo — UPS viejo
+            { x: 700,  y: 370, quizId: 2 },   // suelo — cooling
+            { x: 900,  y: 265, quizId: 3 },   // Plataforma DC-A — rack sin monit.
+            { x: 1910, y: 370, quizId: 4 },   // suelo tras Hole 2 — grupo racks
         ].forEach(ld => {
             const lead = this.add.sprite(ld.x, ld.y, 'lead_valid');
             lead.quizId = ld.quizId;
@@ -1009,7 +1061,7 @@ class GameScene extends Phaser.Scene {
         this.invalidLeads = [];
         [
             { x: 450,  y: 370, reason: '❌ LEAD INVÁLIDO: El contrato ya cubre las piezas' },
-            { x: 1500, y: 370, reason: '❌ LEAD INVÁLIDO: Leads del CCC/ISSR no cuentan como F2O' },
+            { x: 1570, y: 370, reason: '❌ LEAD INVÁLIDO: Leads del CCC/ISSR no cuentan como F2O' },
         ].forEach(ld => {
             const lead = this.add.sprite(ld.x, ld.y, 'lead_invalid');
             lead.reason = ld.reason;
@@ -1018,12 +1070,20 @@ class GameScene extends Phaser.Scene {
             this.invalidLeads.push(lead);
         });
 
-        // Filtraciones de cooling (charcos)
+        // Filtraciones de cooling (charcos) — 3 posiciones estratégicas
         const WAT_Y = FLOOR_Y - 6;
         this.hazardGroup = this.physics.add.staticGroup();
-        const w1 = this.hazardGroup.create(900,  WAT_Y, 'hazard_water');
-        const w2 = this.hazardGroup.create(1200, WAT_Y, 'hazard_water');
-        [w1, w2].forEach(w => { w.setSize(40, 8); w.refreshBody(); });
+        [620, 1060, 1540].forEach(wx => {
+            const w = this.hazardGroup.create(wx, WAT_Y, 'hazard_water');
+            w.setSize(40, 8); w.refreshBody();
+        });
+
+        // Descargas eléctricas de servidores — más dañinas (0.5/frame)
+        this.sparksGroup = this.physics.add.staticGroup();
+        [300, 1200, 1820].forEach(sx => {
+            const s = this.sparksGroup.create(sx, WAT_Y, 'hazard_sparks');
+            s.setSize(32, 8); s.refreshBody();
+        });
     }
 
     // ------------------------------------------------------------
@@ -1181,15 +1241,19 @@ class GameScene extends Phaser.Scene {
         if (this.player.x < 16)   this.player.setX(16);
         if (this.player.x > 2384) this.player.setX(2384); // 2400 - 16
 
-        // — Peligro: charcos —
+        // — Peligros continuos —
         if (this.inWater) {
             this.health -= 0.3;
-            this.player.setTint(0xff6666);
             if (this.health <= 0) { this.health = 0; this._endLevel('gameover'); }
-        } else {
-            this.player.setTint(0xffffff);
         }
-        this.inWater = false;  // se reactiva vía overlap si sigue en contacto
+        if (this.inSparks) {
+            this.health -= 0.5;   // descarga eléctrica — más dañina que el charco
+            if (this.health <= 0) { this.health = 0; this._endLevel('gameover'); }
+        }
+        // Tinte del jugador según peligro activo
+        this.player.setTint(this.inSparks ? 0xffdd00 : this.inWater ? 0xff6666 : 0xffffff);
+        this.inWater  = false;   // se reactiva vía overlap si sigue en contacto
+        this.inSparks = false;
 
         // — Detección de proximidad: leads válidos —
         let nearLead = null;
