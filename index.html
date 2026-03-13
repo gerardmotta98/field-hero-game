@@ -2028,8 +2028,8 @@ class QuizScene extends Phaser.Scene {
 
 // ================================================================
 //  BOSS SCENE
-//  Reunión con el Facility Manager — 5 rondas de diálogo.
-//  Métricas: Confianza, Oportunidades, Calidad Técnica (0-100, inicio 50).
+//  Diálogo con el Facility Manager — 5 rondas, 3 métricas.
+//  Fondo: boss_bg. FM animado: fm_neutral / fm_talk1 / fm_talk2 / fm_oh
 //  Al terminar → FinalScene con el perfil del técnico.
 // ================================================================
 class BossScene extends Phaser.Scene {
@@ -2042,13 +2042,14 @@ class BossScene extends Phaser.Scene {
         this._gameData = data || {};
 
         // Métricas — arrancan en 50
-        this.conf = 50;
-        this.opp  = 50;
-        this.qual = 50;
-        this._round = 0;
-        this._busy  = false;
+        this.conf = 50; this.opp = 50; this.qual = 50;
+        this._dispConf = 50; this._dispOpp = 50; this._dispQual = 50;
+        this._round     = 0;
+        this._busy      = false;
+        this._talkTimer = null;
+        this._talkFrame = false;
 
-        // ── Diálogos ─────────────────────────────────────────────
+        // ── Diálogos ─────────────────────────────────────────────────────────
         this._dialogues = [
             {
                 fm: '"Bienvenido. Antes de hablar de nada,\n¿cómo ha ido la revisión de los equipos?"',
@@ -2073,11 +2074,11 @@ class BossScene extends Phaser.Scene {
                 ]
             },
             {
-                fm: '"Nuestro contrato de mantenimiento vence el próximo trimestre.\n¿Qué nos recomendáis?"',
+                fm: '"Nuestro contrato de mantenimiento vence el próximo trimestre.\n¿Qué nos recomendais?"',
                 opts: [
                     { txt: 'A)  "Debería renovar con nosotros, le hago la propuesta ahora mismo."',
                       dc:  -5, do: -10, dq:   0, tag: 'mid' },
-                    { txt: 'B)  "Antes de renovar quiero entender si el alcance cubre sus necesidades. Podemos mejorar la cobertura."',
+                    { txt: 'B)  "Antes de renovar quiero entender si el alcance cubre sus necesidades."',
                       dc: +15, do: +15, dq: +10, tag: 'good' },
                     { txt: 'C)  "Eso lo gestiona comercial, yo solo soy técnico."',
                       dc:  -5, do: -20, dq:  +5, tag: 'bad' }
@@ -2086,11 +2087,11 @@ class BossScene extends Phaser.Scene {
             {
                 fm: '"He oído hablar de monitorización remota de equipos.\n¿Es algo que podríais ofrecer?"',
                 opts: [
-                    { txt: 'A)  "Sí, EcoStruxure Asset Advisor. Estado en tiempo real desde cualquier dispositivo. Le preparo propuesta."',
+                    { txt: 'A)  "Sí, EcoStruxure Asset Advisor. Estado en tiempo real. Le preparo propuesta."',
                       dc: +10, do: +20, dq: +10, tag: 'good' },
-                    { txt: 'B)  "Sí, creo que tenemos algo así. Déjeme preguntar a mi compañero comercial."',
+                    { txt: 'B)  "Sí, creo que tenemos algo así. Déjeme preguntar a mi compañero."',
                       dc:   0, do:  +5, dq:  -5, tag: 'mid' },
-                    { txt: 'C)  "La monitorización remota es cara y complicada. No creo que le merezca la pena."',
+                    { txt: 'C)  "La monitorización remota es cara y complicada. No le merece la pena."',
                       dc: -10, do: -20, dq: -10, tag: 'bad' }
                 ]
             },
@@ -2099,7 +2100,7 @@ class BossScene extends Phaser.Scene {
                 opts: [
                     { txt: 'A)  "No es ideal, pero si llevan años así y no ha pasado nada..."',
                       dc:  -5, do: -10, dq: -20, tag: 'bad' },
-                    { txt: 'B)  "Es un riesgo importante. Schneider ofrece formación en seguridad MT/AT. Se lo recomiendo encarecidamente."',
+                    { txt: 'B)  "Es un riesgo importante. Schneider ofrece formación en seguridad MT/AT."',
                       dc: +15, do: +15, dq: +20, tag: 'good' },
                     { txt: 'C)  "Deberían parar todo hasta que estén formados. Voy a reportar esto."',
                       dc: -15, do:  +5, dq: +10, tag: 'mid' }
@@ -2107,82 +2108,76 @@ class BossScene extends Phaser.Scene {
             }
         ];
 
-        // ── Fondo — sala de reuniones ─────────────────────────────
-        const bg = this.add.graphics();
-        bg.fillStyle(0xc8c8d2);                      // pared gris claro
-        bg.fillRect(0, 0, W, H);
-        bg.lineStyle(1, 0xb4b4c0, 0.45);            // textura sutil de pared
-        for (let y = 65; y < 285; y += 65) bg.lineBetween(0, y, W, y);
-        // Cuadro decorativo (logo SE simulado)
-        bg.fillStyle(0xb8b8c6); bg.fillRect(322, 26, 156, 48);
-        bg.lineStyle(3, 0x888896, 1); bg.strokeRect(322, 26, 156, 48);
-        bg.lineStyle(2, 0x3DCD58, 0.8);
-        bg.lineBetween(336, 38, 464, 38); bg.lineBetween(336, 48, 464, 48); bg.lineBetween(336, 58, 464, 58);
-        // Mesa marrón (tercio inferior)
-        bg.fillStyle(0x8b7355); bg.fillRect(0, 288, W, H - 288);
-        bg.fillStyle(0x6a5a3a); bg.fillRect(0, 288, W, 6);   // canto mesa
-        bg.fillStyle(0x9a8065); bg.fillRect(24, 294, W - 48, 10); // reflejo
+        // ── Fondo: sala de reuniones real ─────────────────────────────────
+        this.add.image(400, 225, 'boss_bg').setDisplaySize(W, H);
 
-        // Personajes (visibles por encima de la mesa)
-        this.add.image(108, 274, 'tech_stand').setScale(2.2);
-        this.add.image(692, 274, 'facility_manager').setScale(2.2);
-        this.add.text(108, 308, 'TÚ', {
-            fontSize: '8px', fill: '#6de882', fontFamily: FONT, fontStyle: 'bold'
-        }).setOrigin(0.5);
-        this.add.text(692, 308, 'FACILITY MGR.', {
-            fontSize: '8px', fill: '#f0a030', fontFamily: FONT, fontStyle: 'bold'
-        }).setOrigin(0.5);
+        // ── HUD: franja semi-opaca superior ─────────────────────────────────
+        this.add.graphics().fillStyle(0x0a0a14, 0.82).fillRect(0, 0, W, 42);
 
-        // ── Título ────────────────────────────────────────────────
-        this.add.text(W / 2, 7, 'REUNIÓN CON EL FACILITY MANAGER', {
-            fontSize: '13px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold'
+        // ── Título ──────────────────────────────────────────────────────────
+        this.add.text(W / 2, 4, 'REUNIÓN CON EL FACILITY MANAGER', {
+            fontSize: '10px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold'
         }).setOrigin(0.5, 0);
 
-        // ── Métricas (3 barras horizontales en fila) ──────────────
+        // ── Métricas HUD (3 barras) ───────────────────────────────────────────
         const MLABELS = ['CONFIANZA', 'OPORTUNIDADES', 'CALIDAD TÉC.'];
-        const SEG_W   = W / 3;
-        const LBL_W   = 92;
-        const BAR_H   = 9;
-        const BAR_Y   = 26;
+        const SEG_W = W / 3, LBL_W = 92, BAR_H = 9, BAR_Y = 22;
         this._bars = [];
         MLABELS.forEach((lbl, i) => {
-            const BX = Math.floor(i * SEG_W) + 8;
+            const BX   = Math.floor(i * SEG_W) + 8;
             const barX = BX + LBL_W;
             const barW = Math.floor(SEG_W) - LBL_W - 12;
-            this.add.text(BX, BAR_Y, lbl + ':', {
-                fontSize: '8px', fill: '#a0a0b8', fontFamily: FONT
-            });
-            const bgBar = this.add.graphics();
-            bgBar.fillStyle(0x2a2a3a); bgBar.fillRect(barX, BAR_Y + 1, barW, BAR_H);
+            this.add.text(BX, BAR_Y, lbl + ':', { fontSize: '8px', fill: '#a0a0b8', fontFamily: FONT });
+            this.add.graphics().fillStyle(0x2a2a3a).fillRect(barX, BAR_Y + 1, barW, BAR_H);
             const bar = this.add.graphics();
             this._bars.push({ gfx: bar, x: barX, y: BAR_Y + 1, w: barW, h: BAR_H });
         });
         this._redrawBars();
 
-        // ── Caja de diálogo del FM ────────────────────────────────
-        const BOX_X = 178, BOX_Y = 46, BOX_W = 444, BOX_H = 122;
+        // ── Técnico (izquierda) ───────────────────────────────────────────────────
+        this.add.image(120, 218, 'tech_stand').setScale(1.8);
+        this.add.text(120, 232, 'TÚ', {
+            fontSize: '8px', fill: '#6de882', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // ── Facility Manager (derecha) ──────────────────────────────────────────
+        this._fmSprite = this.add.image(600, 170, 'fm_neutral').setScale(0.9);
+        if (this._fmSprite.displayHeight > 220) {
+            this._fmSprite.setScale(0.9 * 220 / this._fmSprite.displayHeight);
+        }
+        const fw = this._fmSprite.displayWidth  + 6;
+        const fh = this._fmSprite.displayHeight + 6;
+        const fmBorder = this.add.graphics();
+        fmBorder.lineStyle(3, 0x1a1a2e, 1);
+        fmBorder.strokeRect(600 - fw / 2, 170 - fh / 2, fw, fh);
+        this.add.text(600, 170 + fh / 2 + 5, 'FACILITY MGR.', {
+            fontSize: '8px', fill: '#f0a030', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5, 0);
+
+        // ── Caja de diálogo (mitad inferior, y=278 a y=436) ───────────────
+        const BOX_X = 10, BOX_Y = 278, BOX_W = W - 20, BOX_H = 158;
         const boxGfx = this.add.graphics();
-        boxGfx.fillStyle(0x12122a, 0.96); boxGfx.fillRect(BOX_X, BOX_Y, BOX_W, BOX_H);
-        boxGfx.lineStyle(2, 0xf0a030, 1); boxGfx.strokeRect(BOX_X, BOX_Y, BOX_W, BOX_H);
-        this.add.text(BOX_X + 10, BOX_Y + 8, 'Facility Manager:', {
+        boxGfx.fillStyle(0x12122a, 0.93); boxGfx.fillRect(BOX_X, BOX_Y, BOX_W, BOX_H);
+        boxGfx.lineStyle(2, 0x3DCD58, 1);  boxGfx.strokeRect(BOX_X, BOX_Y, BOX_W, BOX_H);
+
+        this.add.text(BOX_X + 10, BOX_Y + 7, 'Facility Manager:', {
             fontSize: '9px', fill: '#f0a030', fontFamily: FONT, fontStyle: 'bold'
         });
-
-        this._roundText = this.add.text(BOX_X + BOX_W - 8, BOX_Y + 8, 'RONDA 1 / 5', {
+        this._roundText = this.add.text(BOX_X + BOX_W - 10, BOX_Y + 7, 'RONDA 1 / 5', {
             fontSize: '8px', fill: '#7a7a8e', fontFamily: FONT
         }).setOrigin(1, 0);
-
-        this._dialogText = this.add.text(BOX_X + 10, BOX_Y + 26, '', {
+        this._dialogText = this.add.text(BOX_X + 10, BOX_Y + 22, '', {
             fontSize: '11px', fill: '#e8e8f0', fontFamily: FONT,
-            wordWrap: { width: BOX_W - 20 }, lineSpacing: 4
+            wordWrap: { width: BOX_W - 20 }, lineSpacing: 3
         });
 
-        // ── Cajas de opciones (3) ─────────────────────────────────
-        const OPT_X = 40, OPT_W = W - 80, OPT_H = 60, OPT_GAP = 5;
-        const OPT_Y0 = BOX_Y + BOX_H + 8;
+        // ── Opciones de respuesta (3) ─────────────────────────────────────────────
+        const OPT_X  = BOX_X + 6,  OPT_W  = BOX_W - 12;
+        const OPT_H  = 26,          OPT_GAP = 2;
+        const OPT_Y0 = BOX_Y + 68;
         this._optBtns = [];
         for (let i = 0; i < 3; i++) {
-            const OY = OPT_Y0 + i * (OPT_H + OPT_GAP);
+            const OY  = OPT_Y0 + i * (OPT_H + OPT_GAP);
             const gfx = this.add.graphics();
             const txt = this.add.text(OPT_X + 8, OY + OPT_H / 2, '', {
                 fontSize: '10px', fill: '#e8e8f0', fontFamily: FONT,
@@ -2191,23 +2186,22 @@ class BossScene extends Phaser.Scene {
             this._optBtns.push({ gfx, txt, x: OPT_X, y: OY, w: OPT_W, h: OPT_H });
         }
 
-        // Instrucción de teclas
-        this.add.text(W / 2, OPT_Y0 + 3 * (OPT_H + OPT_GAP) + 4, 'Pulsa  1 · 2 · 3  o haz clic para responder', {
+        // Instrucción y feedback (mismo y, se alternan)
+        const FB_Y = OPT_Y0 + 3 * (OPT_H + OPT_GAP) + 3;
+        this._instrTxt = this.add.text(W / 2, FB_Y, 'Pulsa  1 · 2 · 3  o haz clic', {
             fontSize: '8px', fill: '#4a4a6a', fontFamily: FONT
         }).setOrigin(0.5, 0);
-
-        // Texto de feedback (aparece brevemente tras responder)
-        this._feedbackTxt = this.add.text(W / 2, OPT_Y0 + 3 * (OPT_H + OPT_GAP) + 16, '', {
+        this._feedbackTxt = this.add.text(W / 2, FB_Y, '', {
             fontSize: '11px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold', align: 'center'
         }).setOrigin(0.5, 0).setVisible(false);
 
-        // Lanzar ronda 1
+        // ── Arrancar ronda 1 ─────────────────────────────────────────────────────
         this._showRound();
     }
 
-    // ── Helpers de barras ────────────────────────────────────────
+    // ── Redibujar barras con valores _disp* ─────────────────────────────
     _redrawBars() {
-        const vals = [this.conf, this.opp, this.qual];
+        const vals = [this._dispConf, this._dispOpp, this._dispQual];
         this._bars.forEach((b, i) => {
             b.gfx.clear();
             const pct = Phaser.Math.Clamp(vals[i] / 100, 0, 1);
@@ -2217,14 +2211,37 @@ class BossScene extends Phaser.Scene {
         });
     }
 
-    // ── Mostrar ronda actual ─────────────────────────────────────
+    // ── Animación de hablar ─────────────────────────────────────────────────
+    _startTalking() {
+        this._talkFrame = false;
+        this._fmSprite.setTexture('fm_talk1');
+        this._talkTimer = this.time.addEvent({
+            delay: 300,
+            callback: () => {
+                this._talkFrame = !this._talkFrame;
+                this._fmSprite.setTexture(this._talkFrame ? 'fm_talk2' : 'fm_talk1');
+            },
+            loop: true
+        });
+    }
+
+    _stopTalking() {
+        if (this._talkTimer) { this._talkTimer.remove(); this._talkTimer = null; }
+        this._fmSprite.setTexture('fm_neutral');
+    }
+
+    // ── Mostrar ronda actual ─────────────────────────────────────────────────
     _showRound() {
         if (this._round >= this._dialogues.length) { this._endBoss(); return; }
-        const d = this._dialogues[this._round];
+        const d    = this._dialogues[this._round];
         this._busy = false;
 
         this._dialogText.setText(d.fm);
-        this._roundText.setText(`RONDA ${this._round + 1} / 5`);
+        this._roundText.setText('RONDA ' + (this._round + 1) + ' / 5');
+
+        // FM habla mientras el jugador lee la pregunta
+        this._startTalking();
+        this.time.delayedCall(1800, () => { if (!this._busy) this._stopTalking(); });
 
         d.opts.forEach((opt, i) => {
             const btn = this._optBtns[i];
@@ -2235,7 +2252,6 @@ class BossScene extends Phaser.Scene {
             btn.gfx.strokeRect(btn.x, btn.y, btn.w, btn.h);
             btn.txt.setText(opt.txt).setStyle({ fill: '#e8e8f0' });
 
-            // hover
             btn.gfx.setInteractive(
                 new Phaser.Geom.Rectangle(btn.x, btn.y, btn.w, btn.h),
                 Phaser.Geom.Rectangle.Contains
@@ -2243,19 +2259,18 @@ class BossScene extends Phaser.Scene {
             btn.gfx.on('pointerover', () => {
                 if (this._busy) return;
                 btn.gfx.clear();
-                btn.gfx.fillStyle(0x22244a, 1); btn.gfx.fillRect(btn.x, btn.y, btn.w, btn.h);
+                btn.gfx.fillStyle(0x22244a, 1);  btn.gfx.fillRect(btn.x, btn.y, btn.w, btn.h);
                 btn.gfx.lineStyle(1, 0x3DCD58, 0.8); btn.gfx.strokeRect(btn.x, btn.y, btn.w, btn.h);
             });
             btn.gfx.on('pointerout', () => {
                 if (this._busy) return;
                 btn.gfx.clear();
-                btn.gfx.fillStyle(0x16182e, 1); btn.gfx.fillRect(btn.x, btn.y, btn.w, btn.h);
+                btn.gfx.fillStyle(0x16182e, 1);  btn.gfx.fillRect(btn.x, btn.y, btn.w, btn.h);
                 btn.gfx.lineStyle(1, 0x3a3a5a, 0.9); btn.gfx.strokeRect(btn.x, btn.y, btn.w, btn.h);
             });
             btn.gfx.once('pointerdown', () => this._select(i));
         });
 
-        // Teclas numéricas (con delay para evitar bleed de ENTER anterior)
         this.time.delayedCall(100, () => {
             if (this._busy) return;
             this.input.keyboard.once('keydown-ONE',   () => this._select(0));
@@ -2264,46 +2279,72 @@ class BossScene extends Phaser.Scene {
         });
     }
 
-    // ── Procesar selección ───────────────────────────────────────
+    // ── Procesar selección ───────────────────────────────────────────────────
     _select(idx) {
         if (this._busy) return;
         this._busy = true;
-
-        // Limpiar listeners de teclado
+        this._stopTalking();
         this.input.keyboard.removeAllListeners('keydown-ONE');
         this.input.keyboard.removeAllListeners('keydown-TWO');
         this.input.keyboard.removeAllListeners('keydown-THREE');
 
-        const opt = this._dialogues[this._round].opts[idx];
+        const opt      = this._dialogues[this._round].opts[idx];
+        const prevConf = this.conf, prevOpp = this.opp, prevQual = this.qual;
 
-        // Aplicar deltas con clamp
         this.conf = Phaser.Math.Clamp(this.conf + opt.dc, 0, 100);
         this.opp  = Phaser.Math.Clamp(this.opp  + opt.do, 0, 100);
         this.qual = Phaser.Math.Clamp(this.qual  + opt.dq, 0, 100);
-        this._redrawBars();
 
-        // Resaltar opción elegida
-        const btn = this._optBtns[idx];
+        // Tween animado de las barras
+        this.tweens.addCounter({
+            from: 0, to: 1, duration: 450,
+            onUpdate: tw => {
+                const t = tw.getValue();
+                this._dispConf = Phaser.Math.Linear(prevConf, this.conf, t);
+                this._dispOpp  = Phaser.Math.Linear(prevOpp,  this.opp,  t);
+                this._dispQual = Phaser.Math.Linear(prevQual, this.qual, t);
+                this._redrawBars();
+            },
+            onComplete: () => {
+                this._dispConf = this.conf;
+                this._dispOpp  = this.opp;
+                this._dispQual = this.qual;
+                this._redrawBars();
+            }
+        });
+
+        // Resaltar opción seleccionada
+        const btn     = this._optBtns[idx];
+        const hlFill  = opt.tag === 'good' ? 0x0a200a : opt.tag === 'bad' ? 0x200a0a : 0x201608;
+        const hlBord  = opt.tag === 'good' ? 0x3DCD58 : opt.tag === 'bad' ? 0xe84057 : 0xf0a030;
         btn.gfx.removeAllListeners();
         btn.gfx.clear();
-        const hlFill  = opt.tag === 'good' ? 0x0a200a : opt.tag === 'bad'  ? 0x200a0a : 0x201608;
-        const hlBord  = opt.tag === 'good' ? 0x3DCD58 : opt.tag === 'bad'  ? 0xe84057 : 0xf0a030;
         btn.gfx.fillStyle(hlFill, 1);  btn.gfx.fillRect(btn.x, btn.y, btn.w, btn.h);
         btn.gfx.lineStyle(2, hlBord, 1); btn.gfx.strokeRect(btn.x, btn.y, btn.w, btn.h);
 
+        // FM reacciona: fm_oh durante 800ms
+        this._fmSprite.setTexture('fm_oh');
+
         // Feedback textual
         const fbCol = opt.tag === 'good' ? '#3DCD58' : opt.tag === 'bad' ? '#e84057' : '#f0a030';
-        const fbMsg = opt.tag === 'good' ? '✔  Buena respuesta' : opt.tag === 'bad' ? '✖  Respuesta incorrecta' : '~  Respuesta mejorable';
+        const fbMsg = opt.tag === 'good' ? '✔  Buena respuesta' :
+                      opt.tag === 'bad'  ? '✖  Respuesta incorrecta' : '~  Respuesta mejorable';
+        this._instrTxt.setVisible(false);
         this._feedbackTxt.setText(fbMsg).setStyle({ fill: fbCol }).setVisible(true);
 
-        this.time.delayedCall(1500, () => {
-            this._feedbackTxt.setVisible(false);
-            this._round++;
-            this._showRound();
+        // Secuencia: fm_oh (800ms) → fm_neutral → siguiente ronda (700ms)
+        this.time.delayedCall(800, () => {
+            this._fmSprite.setTexture('fm_neutral');
+            this.time.delayedCall(700, () => {
+                this._instrTxt.setVisible(true);
+                this._feedbackTxt.setVisible(false);
+                this._round++;
+                this._showRound();
+            });
         });
     }
 
-    // ── Fin de las 5 rondas ──────────────────────────────────────
+    // ── Fin de las 5 rondas ────────────────────────────────────────────────────
     _endBoss() {
         const c = Math.round(this.conf);
         const o = Math.round(this.opp);
@@ -2311,42 +2352,34 @@ class BossScene extends Phaser.Scene {
 
         let perfil, pColor, subtexto;
         if (c >= 70 && o >= 70 && q >= 70) {
-            perfil   = 'TRUSTED ADVISOR';
-            pColor   = '#3DCD58';
+            perfil   = 'TRUSTED ADVISOR'; pColor = '#3DCD58';
             subtexto = 'El técnico que todo cliente quiere tener';
         } else if (o >= 70 && c < 50) {
-            perfil   = 'VENDEDOR AGRESIVO';
-            pColor   = '#e84057';
+            perfil   = 'VENDEDOR AGRESIVO'; pColor = '#e84057';
             subtexto = 'Generas oportunidades, pero a costa de la confianza';
         } else if (q >= 70 && o < 40) {
-            perfil   = 'TÉCNICO INVISIBLE';
-            pColor   = '#4080d0';
+            perfil   = 'TÉCNICO INVISIBLE'; pColor = '#4080d0';
             subtexto = 'Excelente técnico, pero dejas pasar las oportunidades';
         } else if (c >= 70 && o < 40) {
-            perfil   = 'AMIGO DEL CLIENTE';
-            pColor   = '#f0a030';
+            perfil   = 'AMIGO DEL CLIENTE'; pColor = '#f0a030';
             subtexto = 'Gran relación, pero sin impacto comercial';
         } else {
-            perfil   = 'EN DESARROLLO';
-            pColor   = '#7a7a8e';
+            perfil   = 'EN DESARROLLO'; pColor = '#7a7a8e';
             subtexto = 'Sigue formándote, ¡el potencial está ahí!';
         }
 
         this.scene.start('FinalScene', {
-            confianza:        c,
-            oportunidades:    o,
-            calidad:          q,
-            perfil,
-            pColor,
-            subtexto,
-            scoreTotal:       totalScore,
-            bonusTotal:       totalBonus,
+            confianza:         c,
+            oportunidades:     o,
+            calidad:           q,
+            perfil, pColor, subtexto,
+            scoreTotal:        totalScore,
+            bonusTotal:        totalBonus,
             leadsCorrectTotal: totalLeadsCorrect,
-            leadsTotal:       12
+            leadsTotal:        12
         });
     }
 }
-
 
 // ================================================================
 //  FINAL SCENE
