@@ -617,6 +617,38 @@ class BootScene extends Phaser.Scene {
             tex.refresh();
         }
 
+        // --- FACILITY MANAGER — 32x32 ----------------------------
+        {
+            const { tex, ctx } = mkTex('facility_manager', 32, 32);
+            // Pelo oscuro (rows 0-5)
+            r(ctx,  6,  0, 20,  1, '#1a0e04');
+            r(ctx,  4,  1, 24,  5, '#2a1a0a');
+            r(ctx,  6,  4, 20,  2, '#3a2010');
+            // Cara piel (rows 5-12)
+            r(ctx,  8,  5, 16,  7, '#f0c8a0');
+            r(ctx, 10,  8,  3,  2, '#1a1a1a');   // ojo izq
+            r(ctx, 19,  8,  3,  2, '#1a1a1a');   // ojo der
+            r(ctx, 12, 11,  8,  1, '#c8a080');   // boca
+            // Cuello (rows 12-13)
+            r(ctx, 13, 12,  6,  2, '#f0c8a0');
+            // Americana azul marino (rows 14-23)
+            r(ctx,  2, 14, 28, 10, '#1e2e4a');
+            r(ctx,  2, 14,  3,  8, '#1a2840');   // manga izq
+            r(ctx, 27, 14,  3,  8, '#1a2840');   // manga der
+            // Camisa blanca central
+            r(ctx, 10, 14, 12, 10, '#e8e8f0');
+            // Corbata azul
+            r(ctx, 14, 14,  4, 10, '#4080d0');
+            r(ctx, 15, 16,  2,  6, '#2a5090');   // sombra nudo
+            // Pantalón gris oscuro (rows 24-29)
+            r(ctx,  6, 24,  8,  6, '#2a2a3a');
+            r(ctx, 18, 24,  8,  6, '#2a2a3a');
+            // Zapatos negros (rows 30-31)
+            r(ctx,  5, 30, 10,  2, '#1a1a2e');
+            r(ctx, 17, 30, 10,  2, '#1a1a2e');
+            tex.refresh();
+        }
+
         // --- Animaciones globales --------------------------------
         this.anims.create({
             key: 'idle',
@@ -1744,8 +1776,13 @@ class SummaryScene extends Phaser.Scene {
                         currentWorld++;
                         this.scene.start('BriefingScene');
                     } else {
+                        // Mundo 3 completado → reunión con el Facility Manager
                         playerHealth = 100;
-                        this.scene.start('TitleScene'); // iteración 3: irá a BossScene
+                        this.scene.start('BossScene', {
+                            score: data.score,
+                            bonus: data.bonus,
+                            health: data.health
+                        });
                     }
                 } else {
                     // Fallo (hit rate < 75% o tiempo agotado) → reinicio desde Mundo 1
@@ -1945,6 +1982,414 @@ class QuizScene extends Phaser.Scene {
 
 
 // ================================================================
+//  BOSS SCENE
+//  Reunión con el Facility Manager — 5 rondas de diálogo.
+//  Métricas: Confianza, Oportunidades, Calidad Técnica (0-100, inicio 50).
+//  Al terminar → FinalScene con el perfil del técnico.
+// ================================================================
+class BossScene extends Phaser.Scene {
+    constructor() { super({ key: 'BossScene' }); }
+
+    create(data) {
+        const W = 800, H = 450;
+        const FONT = 'Courier New, Courier, monospace';
+        this._FONT     = FONT;
+        this._gameData = data || {};
+
+        // Métricas — arrancan en 50
+        this.conf = 50;
+        this.opp  = 50;
+        this.qual = 50;
+        this._round = 0;
+        this._busy  = false;
+
+        // ── Diálogos ─────────────────────────────────────────────
+        this._dialogues = [
+            {
+                fm: '"Bienvenido. Antes de hablar de nada,\n¿cómo ha ido la revisión de los equipos?"',
+                opts: [
+                    { txt: 'A)  "Todo perfecto, no hay ningún problema."',
+                      dc: -10, do: -15, dq: -10, tag: 'bad' },
+                    { txt: 'B)  "He encontrado varios puntos que revisar juntos. ¿Tiene unos minutos?"',
+                      dc: +15, do: +10, dq: +10, tag: 'good' },
+                    { txt: 'C)  "He visto muchas cosas. Tengo varias propuestas comerciales."',
+                      dc: -15, do:  +5, dq:  -5, tag: 'mid' }
+                ]
+            },
+            {
+                fm: '"Tenemos cuadros eléctricos que llevan años sin revisar.\n¿Debería preocuparme?"',
+                opts: [
+                    { txt: 'A)  "No se preocupe, mientras funcionen no pasa nada."',
+                      dc:  +5, do: -20, dq: -15, tag: 'bad' },
+                    { txt: 'B)  "Sí. La antigüedad implica riesgos. Podríamos hacer un Health Check."',
+                      dc: +10, do: +15, dq: +15, tag: 'good' },
+                    { txt: 'C)  "Sí, debería preocuparse mucho. Necesita modernizar todo urgentemente."',
+                      dc: -10, do: +10, dq:  -5, tag: 'mid' }
+                ]
+            },
+            {
+                fm: '"Nuestro contrato de mantenimiento vence el próximo trimestre.\n¿Qué nos recomendáis?"',
+                opts: [
+                    { txt: 'A)  "Debería renovar con nosotros, le hago la propuesta ahora mismo."',
+                      dc:  -5, do: -10, dq:   0, tag: 'mid' },
+                    { txt: 'B)  "Antes de renovar quiero entender si el alcance cubre sus necesidades. Podemos mejorar la cobertura."',
+                      dc: +15, do: +15, dq: +10, tag: 'good' },
+                    { txt: 'C)  "Eso lo gestiona comercial, yo solo soy técnico."',
+                      dc:  -5, do: -20, dq:  +5, tag: 'bad' }
+                ]
+            },
+            {
+                fm: '"He oído hablar de monitorización remota de equipos.\n¿Es algo que podríais ofrecer?"',
+                opts: [
+                    { txt: 'A)  "Sí, EcoStruxure Asset Advisor. Estado en tiempo real desde cualquier dispositivo. Le preparo propuesta."',
+                      dc: +10, do: +20, dq: +10, tag: 'good' },
+                    { txt: 'B)  "Sí, creo que tenemos algo así. Déjeme preguntar a mi compañero comercial."',
+                      dc:   0, do:  +5, dq:  -5, tag: 'mid' },
+                    { txt: 'C)  "La monitorización remota es cara y complicada. No creo que le merezca la pena."',
+                      dc: -10, do: -20, dq: -10, tag: 'bad' }
+                ]
+            },
+            {
+                fm: '"Algunos operarios trabajan con las celdas sin\nformación específica. ¿Es un problema?"',
+                opts: [
+                    { txt: 'A)  "No es ideal, pero si llevan años así y no ha pasado nada..."',
+                      dc:  -5, do: -10, dq: -20, tag: 'bad' },
+                    { txt: 'B)  "Es un riesgo importante. Schneider ofrece formación en seguridad MT/AT. Se lo recomiendo encarecidamente."',
+                      dc: +15, do: +15, dq: +20, tag: 'good' },
+                    { txt: 'C)  "Deberían parar todo hasta que estén formados. Voy a reportar esto."',
+                      dc: -15, do:  +5, dq: +10, tag: 'mid' }
+                ]
+            }
+        ];
+
+        // ── Fondo — sala de reuniones ─────────────────────────────
+        const bg = this.add.graphics();
+        bg.fillStyle(0xc8c8d2);                      // pared gris claro
+        bg.fillRect(0, 0, W, H);
+        bg.lineStyle(1, 0xb4b4c0, 0.45);            // textura sutil de pared
+        for (let y = 65; y < 285; y += 65) bg.lineBetween(0, y, W, y);
+        // Cuadro decorativo (logo SE simulado)
+        bg.fillStyle(0xb8b8c6); bg.fillRect(322, 26, 156, 48);
+        bg.lineStyle(3, 0x888896, 1); bg.strokeRect(322, 26, 156, 48);
+        bg.lineStyle(2, 0x3DCD58, 0.8);
+        bg.lineBetween(336, 38, 464, 38); bg.lineBetween(336, 48, 464, 48); bg.lineBetween(336, 58, 464, 58);
+        // Mesa marrón (tercio inferior)
+        bg.fillStyle(0x8b7355); bg.fillRect(0, 288, W, H - 288);
+        bg.fillStyle(0x6a5a3a); bg.fillRect(0, 288, W, 6);   // canto mesa
+        bg.fillStyle(0x9a8065); bg.fillRect(24, 294, W - 48, 10); // reflejo
+
+        // Personajes (visibles por encima de la mesa)
+        this.add.image(108, 274, 'tech_stand').setScale(2.2);
+        this.add.image(692, 274, 'facility_manager').setScale(2.2);
+        this.add.text(108, 308, 'TÚ', {
+            fontSize: '8px', fill: '#6de882', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5);
+        this.add.text(692, 308, 'FACILITY MGR.', {
+            fontSize: '8px', fill: '#f0a030', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // ── Título ────────────────────────────────────────────────
+        this.add.text(W / 2, 7, 'REUNIÓN CON EL FACILITY MANAGER', {
+            fontSize: '13px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5, 0);
+
+        // ── Métricas (3 barras horizontales en fila) ──────────────
+        const MLABELS = ['CONFIANZA', 'OPORTUNIDADES', 'CALIDAD TÉC.'];
+        const SEG_W   = W / 3;
+        const LBL_W   = 92;
+        const BAR_H   = 9;
+        const BAR_Y   = 26;
+        this._bars = [];
+        MLABELS.forEach((lbl, i) => {
+            const BX = Math.floor(i * SEG_W) + 8;
+            const barX = BX + LBL_W;
+            const barW = Math.floor(SEG_W) - LBL_W - 12;
+            this.add.text(BX, BAR_Y, lbl + ':', {
+                fontSize: '8px', fill: '#a0a0b8', fontFamily: FONT
+            });
+            const bgBar = this.add.graphics();
+            bgBar.fillStyle(0x2a2a3a); bgBar.fillRect(barX, BAR_Y + 1, barW, BAR_H);
+            const bar = this.add.graphics();
+            this._bars.push({ gfx: bar, x: barX, y: BAR_Y + 1, w: barW, h: BAR_H });
+        });
+        this._redrawBars();
+
+        // ── Caja de diálogo del FM ────────────────────────────────
+        const BOX_X = 178, BOX_Y = 46, BOX_W = 444, BOX_H = 122;
+        const boxGfx = this.add.graphics();
+        boxGfx.fillStyle(0x12122a, 0.96); boxGfx.fillRect(BOX_X, BOX_Y, BOX_W, BOX_H);
+        boxGfx.lineStyle(2, 0xf0a030, 1); boxGfx.strokeRect(BOX_X, BOX_Y, BOX_W, BOX_H);
+        this.add.text(BOX_X + 10, BOX_Y + 8, 'Facility Manager:', {
+            fontSize: '9px', fill: '#f0a030', fontFamily: FONT, fontStyle: 'bold'
+        });
+
+        this._roundText = this.add.text(BOX_X + BOX_W - 8, BOX_Y + 8, 'RONDA 1 / 5', {
+            fontSize: '8px', fill: '#7a7a8e', fontFamily: FONT
+        }).setOrigin(1, 0);
+
+        this._dialogText = this.add.text(BOX_X + 10, BOX_Y + 26, '', {
+            fontSize: '11px', fill: '#e8e8f0', fontFamily: FONT,
+            wordWrap: { width: BOX_W - 20 }, lineSpacing: 4
+        });
+
+        // ── Cajas de opciones (3) ─────────────────────────────────
+        const OPT_X = 40, OPT_W = W - 80, OPT_H = 60, OPT_GAP = 5;
+        const OPT_Y0 = BOX_Y + BOX_H + 8;
+        this._optBtns = [];
+        for (let i = 0; i < 3; i++) {
+            const OY = OPT_Y0 + i * (OPT_H + OPT_GAP);
+            const gfx = this.add.graphics();
+            const txt = this.add.text(OPT_X + 8, OY + OPT_H / 2, '', {
+                fontSize: '10px', fill: '#e8e8f0', fontFamily: FONT,
+                wordWrap: { width: OPT_W - 20 }
+            }).setOrigin(0, 0.5);
+            this._optBtns.push({ gfx, txt, x: OPT_X, y: OY, w: OPT_W, h: OPT_H });
+        }
+
+        // Instrucción de teclas
+        this.add.text(W / 2, OPT_Y0 + 3 * (OPT_H + OPT_GAP) + 4, 'Pulsa  1 · 2 · 3  o haz clic para responder', {
+            fontSize: '8px', fill: '#4a4a6a', fontFamily: FONT
+        }).setOrigin(0.5, 0);
+
+        // Texto de feedback (aparece brevemente tras responder)
+        this._feedbackTxt = this.add.text(W / 2, OPT_Y0 + 3 * (OPT_H + OPT_GAP) + 16, '', {
+            fontSize: '11px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold', align: 'center'
+        }).setOrigin(0.5, 0).setVisible(false);
+
+        // Lanzar ronda 1
+        this._showRound();
+    }
+
+    // ── Helpers de barras ────────────────────────────────────────
+    _redrawBars() {
+        const vals = [this.conf, this.opp, this.qual];
+        this._bars.forEach((b, i) => {
+            b.gfx.clear();
+            const pct = Phaser.Math.Clamp(vals[i] / 100, 0, 1);
+            const col  = pct > 0.6 ? 0x3DCD58 : pct > 0.35 ? 0xf0d020 : 0xe84057;
+            b.gfx.fillStyle(col);
+            b.gfx.fillRect(b.x, b.y, Math.floor(b.w * pct), b.h);
+        });
+    }
+
+    // ── Mostrar ronda actual ─────────────────────────────────────
+    _showRound() {
+        if (this._round >= this._dialogues.length) { this._endBoss(); return; }
+        const d = this._dialogues[this._round];
+        this._busy = false;
+
+        this._dialogText.setText(d.fm);
+        this._roundText.setText(`RONDA ${this._round + 1} / 5`);
+
+        d.opts.forEach((opt, i) => {
+            const btn = this._optBtns[i];
+            btn.gfx.clear();
+            btn.gfx.fillStyle(0x16182e, 1);
+            btn.gfx.fillRect(btn.x, btn.y, btn.w, btn.h);
+            btn.gfx.lineStyle(1, 0x3a3a5a, 0.9);
+            btn.gfx.strokeRect(btn.x, btn.y, btn.w, btn.h);
+            btn.txt.setText(opt.txt).setStyle({ fill: '#e8e8f0' });
+
+            // hover
+            btn.gfx.setInteractive(
+                new Phaser.Geom.Rectangle(btn.x, btn.y, btn.w, btn.h),
+                Phaser.Geom.Rectangle.Contains
+            );
+            btn.gfx.on('pointerover', () => {
+                if (this._busy) return;
+                btn.gfx.clear();
+                btn.gfx.fillStyle(0x22244a, 1); btn.gfx.fillRect(btn.x, btn.y, btn.w, btn.h);
+                btn.gfx.lineStyle(1, 0x3DCD58, 0.8); btn.gfx.strokeRect(btn.x, btn.y, btn.w, btn.h);
+            });
+            btn.gfx.on('pointerout', () => {
+                if (this._busy) return;
+                btn.gfx.clear();
+                btn.gfx.fillStyle(0x16182e, 1); btn.gfx.fillRect(btn.x, btn.y, btn.w, btn.h);
+                btn.gfx.lineStyle(1, 0x3a3a5a, 0.9); btn.gfx.strokeRect(btn.x, btn.y, btn.w, btn.h);
+            });
+            btn.gfx.once('pointerdown', () => this._select(i));
+        });
+
+        // Teclas numéricas (con delay para evitar bleed de ENTER anterior)
+        this.time.delayedCall(100, () => {
+            if (this._busy) return;
+            this.input.keyboard.once('keydown-ONE',   () => this._select(0));
+            this.input.keyboard.once('keydown-TWO',   () => this._select(1));
+            this.input.keyboard.once('keydown-THREE', () => this._select(2));
+        });
+    }
+
+    // ── Procesar selección ───────────────────────────────────────
+    _select(idx) {
+        if (this._busy) return;
+        this._busy = true;
+
+        // Limpiar listeners de teclado
+        this.input.keyboard.removeAllListeners('keydown-ONE');
+        this.input.keyboard.removeAllListeners('keydown-TWO');
+        this.input.keyboard.removeAllListeners('keydown-THREE');
+
+        const opt = this._dialogues[this._round].opts[idx];
+
+        // Aplicar deltas con clamp
+        this.conf = Phaser.Math.Clamp(this.conf + opt.dc, 0, 100);
+        this.opp  = Phaser.Math.Clamp(this.opp  + opt.do, 0, 100);
+        this.qual = Phaser.Math.Clamp(this.qual  + opt.dq, 0, 100);
+        this._redrawBars();
+
+        // Resaltar opción elegida
+        const btn = this._optBtns[idx];
+        btn.gfx.removeAllListeners();
+        btn.gfx.clear();
+        const hlFill  = opt.tag === 'good' ? 0x0a200a : opt.tag === 'bad'  ? 0x200a0a : 0x201608;
+        const hlBord  = opt.tag === 'good' ? 0x3DCD58 : opt.tag === 'bad'  ? 0xe84057 : 0xf0a030;
+        btn.gfx.fillStyle(hlFill, 1);  btn.gfx.fillRect(btn.x, btn.y, btn.w, btn.h);
+        btn.gfx.lineStyle(2, hlBord, 1); btn.gfx.strokeRect(btn.x, btn.y, btn.w, btn.h);
+
+        // Feedback textual
+        const fbCol = opt.tag === 'good' ? '#3DCD58' : opt.tag === 'bad' ? '#e84057' : '#f0a030';
+        const fbMsg = opt.tag === 'good' ? '✔  Buena respuesta' : opt.tag === 'bad' ? '✖  Respuesta incorrecta' : '~  Respuesta mejorable';
+        this._feedbackTxt.setText(fbMsg).setStyle({ fill: fbCol }).setVisible(true);
+
+        this.time.delayedCall(1500, () => {
+            this._feedbackTxt.setVisible(false);
+            this._round++;
+            this._showRound();
+        });
+    }
+
+    // ── Fin de las 5 rondas ──────────────────────────────────────
+    _endBoss() {
+        const avg = (this.conf + this.opp + this.qual) / 3;
+        let perfil, pColor;
+        if      (avg >= 70) { perfil = 'TRUSTED ADVISOR';      pColor = '#3DCD58'; }
+        else if (avg >= 45) { perfil = 'TÉCNICO EN DESARROLLO'; pColor = '#f0a030'; }
+        else                { perfil = 'TÉCNICO INVISIBLE';     pColor = '#e84057'; }
+
+        this.scene.start('FinalScene', {
+            confianza:     Math.round(this.conf),
+            oportunidades: Math.round(this.opp),
+            calidad:       Math.round(this.qual),
+            perfil,
+            pColor,
+            score: this._gameData.score || 0,
+            bonus: this._gameData.bonus || 0
+        });
+    }
+}
+
+
+// ================================================================
+//  FINAL SCENE
+//  Pantalla final con el perfil del técnico y métricas globales.
+//  ENTER → TitleScene (nueva partida).
+// ================================================================
+class FinalScene extends Phaser.Scene {
+    constructor() { super({ key: 'FinalScene' }); }
+
+    create(data) {
+        const W = 800, H = 450;
+        const FONT = 'Courier New, Courier, monospace';
+
+        this.cameras.main.setBackgroundColor('#1a1a2e');
+
+        // Fondo con partículas verdes simuladas
+        const bg = this.add.graphics();
+        bg.fillStyle(0x0e0e1e); bg.fillRect(0, 0, W, H);
+        for (let i = 0; i < 40; i++) {
+            const px = Phaser.Math.Between(0, W), py = Phaser.Math.Between(0, H);
+            bg.fillStyle(0x3DCD58, Phaser.Math.FloatBetween(0.05, 0.2));
+            bg.fillRect(px, py, Phaser.Math.Between(1, 3), Phaser.Math.Between(1, 3));
+        }
+
+        // Título
+        this.add.text(W / 2, 18, '⚡  FIELD HERO — FIN DE LA MISIÓN  ⚡', {
+            fontSize: '16px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // Perfil del técnico
+        const profileBox = this.add.graphics();
+        profileBox.fillStyle(0x12122a, 0.95); profileBox.fillRect(W * 0.2, 52, W * 0.6, 54);
+        profileBox.lineStyle(3, data.pColor ? parseInt(data.pColor.replace('#', '0x')) : 0x3DCD58, 1);
+        profileBox.strokeRect(W * 0.2, 52, W * 0.6, 54);
+        this.add.text(W / 2, 60, 'TU PERFIL COMO TÉCNICO SR:', {
+            fontSize: '9px', fill: '#7a7a8e', fontFamily: FONT
+        }).setOrigin(0.5, 0);
+        this.add.text(W / 2, 76, data.perfil || 'TÉCNICO EN DESARROLLO', {
+            fontSize: '20px', fill: data.pColor || '#f0a030', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5, 0);
+
+        // Separador
+        const g = this.add.graphics();
+        g.lineStyle(1, 0x3DCD58, 0.3); g.lineBetween(80, 118, W - 80, 118);
+
+        // Métricas de la reunión
+        this.add.text(W / 2, 126, 'MÉTRICAS DE LA REUNIÓN', {
+            fontSize: '10px', fill: '#7a7a8e', fontFamily: FONT
+        }).setOrigin(0.5, 0);
+
+        const metrics = [
+            { label: 'Confianza del cliente:',  val: data.confianza     || 0 },
+            { label: 'Oportunidades generadas:', val: data.oportunidades || 0 },
+            { label: 'Calidad técnica:',         val: data.calidad       || 0 },
+        ];
+        const BAR_X = W * 0.22, BAR_W = W * 0.56, BAR_H = 10;
+        metrics.forEach((m, i) => {
+            const Y = 148 + i * 32;
+            this.add.text(BAR_X, Y, m.label, { fontSize: '10px', fill: '#a0a0b8', fontFamily: FONT });
+            const pct = Phaser.Math.Clamp(m.val / 100, 0, 1);
+            const col = pct > 0.6 ? 0x3DCD58 : pct > 0.35 ? 0xf0d020 : 0xe84057;
+            const barBg = this.add.graphics();
+            barBg.fillStyle(0x2a2a3a); barBg.fillRect(BAR_X, Y + 14, BAR_W, BAR_H);
+            const bar = this.add.graphics();
+            bar.fillStyle(col); bar.fillRect(BAR_X, Y + 14, Math.floor(BAR_W * pct), BAR_H);
+            this.add.text(BAR_X + BAR_W + 6, Y + 14, `${m.val}%`, {
+                fontSize: '9px', fill: '#e8e8f0', fontFamily: FONT, fontStyle: 'bold'
+            });
+        });
+
+        // Separador 2
+        g.lineBetween(80, 252, W - 80, 252);
+
+        // Score y bonus
+        this.add.text(W / 2, 260, `Puntuación total: ${data.score || 0} pts     Bonus estimado: ${data.bonus || 0} €`, {
+            fontSize: '12px', fill: '#f0a030', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5, 0);
+
+        // Descripción del perfil
+        const desc = {
+            'TRUSTED ADVISOR':      'Enhorabuena. Eres el técnico que todo cliente quiere:\ncombinas excelencia técnica con visión comercial.',
+            'TÉCNICO EN DESARROLLO': 'Buen trabajo. Sigues creciendo como Trusted Advisor.\nRevisa los puntos donde puedes mejorar tu enfoque.',
+            'TÉCNICO INVISIBLE':    'Tienes margen de mejora. Recuerda: detectar leads\nes parte de tu valor como técnico de Schneider.'
+        }[data.perfil] || '';
+        this.add.text(W / 2, 286, desc, {
+            fontSize: '11px', fill: '#e8e8f0', fontFamily: FONT,
+            align: 'center', lineSpacing: 5, wordWrap: { width: W * 0.7 }
+        }).setOrigin(0.5, 0);
+
+        // Schneider Electric branding
+        this.add.text(W / 2, 354, 'F2O Training Game — Schneider Electric Iberia 2026', {
+            fontSize: '9px', fill: '#3a3a5a', fontFamily: FONT
+        }).setOrigin(0.5, 0);
+
+        // Blink ENTER
+        const blink = this.add.text(W / 2, 386, '▶  Pulsa ENTER para volver al inicio', {
+            fontSize: '12px', fill: '#6de882', fontFamily: FONT
+        }).setOrigin(0.5, 0);
+        this.tweens.add({ targets: blink, alpha: 0.15, duration: 550, yoyo: true, repeat: -1 });
+
+        this.time.delayedCall(300, () => {
+            this.input.keyboard.once('keydown-ENTER', () => {
+                currentWorld = 1;
+                playerHealth = 100;
+                this.scene.start('TitleScene');
+            });
+        });
+    }
+}
+
+
+// ================================================================
 //  CONFIGURACIÓN DE PHASER
 // ================================================================
 const config = {
@@ -1961,7 +2406,7 @@ const config = {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH
     },
-    scene: [ BootScene, TitleScene, BriefingScene, GameScene, QuizScene, SummaryScene ]
+    scene: [ BootScene, TitleScene, BriefingScene, GameScene, QuizScene, SummaryScene, BossScene, FinalScene ]
 };
 
 const game = new Phaser.Game(config);
