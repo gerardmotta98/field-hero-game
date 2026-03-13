@@ -186,8 +186,11 @@ const WORLD_DATA = {
 };
 
 // Variables globales de sesión
-let currentWorld  = 1;
-let playerHealth  = 100;   // persiste entre mundos; se resetea al volver al M1
+let currentWorld      = 1;
+let playerHealth      = 100;   // persiste entre mundos; se resetea al volver al M1
+let totalScore        = 0;     // acumulado de los 3 mundos
+let totalBonus        = 0;     // bonus € acumulado
+let totalLeadsCorrect = 0;     // leads acertados acumulados (máx 12)
 
 // ================================================================
 //  FIELD HERO — La Ruta del Técnico
@@ -716,12 +719,23 @@ class TitleScene extends Phaser.Scene {
             fontSize: '9px', fill: '#3a3a5a', fontFamily: FONT
         }).setOrigin(1, 1);
 
+        // [DEV] Shortcut Boss — eliminar antes del evento
+        this.add.text(10, H - 8, '[DEV] B → Boss directo', {
+            fontSize: '9px', fill: '#3a3a5a', fontFamily: FONT
+        }).setOrigin(0, 1);
+
         // Delay para evitar que la tecla retenida dispare la siguiente escena
         this.time.delayedCall(200, () => {
             this.input.keyboard.once('keydown-ENTER', () => {
-                currentWorld = 1;
-                playerHealth = 100;
+                currentWorld      = 1;
+                playerHealth      = 100;
+                totalScore        = 0;
+                totalBonus        = 0;
+                totalLeadsCorrect = 0;
                 this.scene.start('BriefingScene');
+            });
+            this.input.keyboard.once('keydown-B', () => {
+                this.scene.start('BossScene', { score: 0, bonus: 0, health: 100 });
             });
         });
     }
@@ -1771,6 +1785,10 @@ class SummaryScene extends Phaser.Scene {
         this.time.delayedCall(200, () => {
             this.input.keyboard.once('keydown-ENTER', () => {
                 if (aprobado) {
+                    // Acumular datos del mundo completado
+                    totalScore        += data.score;
+                    totalBonus        += data.bonus;
+                    totalLeadsCorrect += data.leadsCorrect;
                     if (currentWorld < 3) {
                         playerHealth = data.health;   // llevar la vida al siguiente mundo
                         currentWorld++;
@@ -1778,16 +1796,15 @@ class SummaryScene extends Phaser.Scene {
                     } else {
                         // Mundo 3 completado → reunión con el Facility Manager
                         playerHealth = 100;
-                        this.scene.start('BossScene', {
-                            score: data.score,
-                            bonus: data.bonus,
-                            health: data.health
-                        });
+                        this.scene.start('BossScene', { health: data.health });
                     }
                 } else {
-                    // Fallo (hit rate < 75% o tiempo agotado) → reinicio desde Mundo 1
-                    playerHealth = 100;
-                    currentWorld = 1;
+                    // Fallo → resetear todo y volver al Mundo 1
+                    playerHealth      = 100;
+                    currentWorld      = 1;
+                    totalScore        = 0;
+                    totalBonus        = 0;
+                    totalLeadsCorrect = 0;
                     this.scene.start('BriefingScene');
                 }
             });
@@ -2260,20 +2277,44 @@ class BossScene extends Phaser.Scene {
 
     // ── Fin de las 5 rondas ──────────────────────────────────────
     _endBoss() {
-        const avg = (this.conf + this.opp + this.qual) / 3;
-        let perfil, pColor;
-        if      (avg >= 70) { perfil = 'TRUSTED ADVISOR';      pColor = '#3DCD58'; }
-        else if (avg >= 45) { perfil = 'TÉCNICO EN DESARROLLO'; pColor = '#f0a030'; }
-        else                { perfil = 'TÉCNICO INVISIBLE';     pColor = '#e84057'; }
+        const c = Math.round(this.conf);
+        const o = Math.round(this.opp);
+        const q = Math.round(this.qual);
+
+        let perfil, pColor, subtexto;
+        if (c >= 70 && o >= 70 && q >= 70) {
+            perfil   = 'TRUSTED ADVISOR';
+            pColor   = '#3DCD58';
+            subtexto = 'El técnico que todo cliente quiere tener';
+        } else if (o >= 70 && c < 50) {
+            perfil   = 'VENDEDOR AGRESIVO';
+            pColor   = '#e84057';
+            subtexto = 'Generas oportunidades, pero a costa de la confianza';
+        } else if (q >= 70 && o < 40) {
+            perfil   = 'TÉCNICO INVISIBLE';
+            pColor   = '#4080d0';
+            subtexto = 'Excelente técnico, pero dejas pasar las oportunidades';
+        } else if (c >= 70 && o < 40) {
+            perfil   = 'AMIGO DEL CLIENTE';
+            pColor   = '#f0a030';
+            subtexto = 'Gran relación, pero sin impacto comercial';
+        } else {
+            perfil   = 'EN DESARROLLO';
+            pColor   = '#7a7a8e';
+            subtexto = 'Sigue formándote, ¡el potencial está ahí!';
+        }
 
         this.scene.start('FinalScene', {
-            confianza:     Math.round(this.conf),
-            oportunidades: Math.round(this.opp),
-            calidad:       Math.round(this.qual),
+            confianza:        c,
+            oportunidades:    o,
+            calidad:          q,
             perfil,
             pColor,
-            score: this._gameData.score || 0,
-            bonus: this._gameData.bonus || 0
+            subtexto,
+            scoreTotal:       totalScore,
+            bonusTotal:       totalBonus,
+            leadsCorrectTotal: totalLeadsCorrect,
+            leadsTotal:       12
         });
     }
 }
@@ -2281,8 +2322,9 @@ class BossScene extends Phaser.Scene {
 
 // ================================================================
 //  FINAL SCENE
-//  Pantalla final con el perfil del técnico y métricas globales.
-//  ENTER → TitleScene (nueva partida).
+//  Pantalla final con perfil, métricas del boss y resumen global.
+//  Recibe: confianza, oportunidades, calidad, perfil, pColor,
+//          subtexto, scoreTotal, bonusTotal, leadsCorrectTotal, leadsTotal
 // ================================================================
 class FinalScene extends Phaser.Scene {
     constructor() { super({ key: 'FinalScene' }); }
@@ -2291,97 +2333,127 @@ class FinalScene extends Phaser.Scene {
         const W = 800, H = 450;
         const FONT = 'Courier New, Courier, monospace';
 
-        this.cameras.main.setBackgroundColor('#1a1a2e');
-
-        // Fondo con partículas verdes simuladas
+        // ── Fondo oscuro con destellos verdes ────────────────────
         const bg = this.add.graphics();
-        bg.fillStyle(0x0e0e1e); bg.fillRect(0, 0, W, H);
-        for (let i = 0; i < 40; i++) {
-            const px = Phaser.Math.Between(0, W), py = Phaser.Math.Between(0, H);
-            bg.fillStyle(0x3DCD58, Phaser.Math.FloatBetween(0.05, 0.2));
-            bg.fillRect(px, py, Phaser.Math.Between(1, 3), Phaser.Math.Between(1, 3));
+        bg.fillStyle(0x0a0a14); bg.fillRect(0, 0, W, H);
+        for (let i = 0; i < 50; i++) {
+            bg.fillStyle(0x3DCD58, Phaser.Math.FloatBetween(0.03, 0.18));
+            bg.fillRect(
+                Phaser.Math.Between(0, W), Phaser.Math.Between(0, H),
+                Phaser.Math.Between(1, 3), Phaser.Math.Between(1, 3)
+            );
         }
 
-        // Título
-        this.add.text(W / 2, 18, '⚡  FIELD HERO — FIN DE LA MISIÓN  ⚡', {
-            fontSize: '16px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold'
-        }).setOrigin(0.5);
+        // ── Título ────────────────────────────────────────────────
+        this.add.text(W / 2, 7, '⚡  FIELD HERO — RESULTADOS FINALES  ⚡', {
+            fontSize: '18px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5, 0);
 
-        // Perfil del técnico
-        const profileBox = this.add.graphics();
-        profileBox.fillStyle(0x12122a, 0.95); profileBox.fillRect(W * 0.2, 52, W * 0.6, 54);
-        profileBox.lineStyle(3, data.pColor ? parseInt(data.pColor.replace('#', '0x')) : 0x3DCD58, 1);
-        profileBox.strokeRect(W * 0.2, 52, W * 0.6, 54);
-        this.add.text(W / 2, 60, 'TU PERFIL COMO TÉCNICO SR:', {
+        // ── Sección perfil ────────────────────────────────────────
+        const pColorHex = parseInt((data.pColor || '#7a7a8e').replace('#', ''), 16);
+        const PBX = 55, PBY = 38, PBW = W - 110, PBH = 100;
+        const pBox = this.add.graphics();
+        pBox.fillStyle(0x0e0e20, 0.96); pBox.fillRect(PBX, PBY, PBW, PBH);
+        pBox.lineStyle(3, pColorHex, 1); pBox.strokeRect(PBX, PBY, PBW, PBH);
+
+        // Sprite técnico (escala 3 = 96×96)
+        this.add.image(PBX + 56, PBY + 50, 'tech_stand').setScale(3);
+
+        // Textos de perfil
+        this.add.text(PBX + 120, PBY + 10, 'TU PERFIL COMO TÉCNICO SR:', {
             fontSize: '9px', fill: '#7a7a8e', fontFamily: FONT
-        }).setOrigin(0.5, 0);
-        this.add.text(W / 2, 76, data.perfil || 'TÉCNICO EN DESARROLLO', {
-            fontSize: '20px', fill: data.pColor || '#f0a030', fontFamily: FONT, fontStyle: 'bold'
-        }).setOrigin(0.5, 0);
+        });
+        this.add.text(PBX + 120, PBY + 26, data.perfil || 'EN DESARROLLO', {
+            fontSize: '22px', fill: data.pColor || '#7a7a8e', fontFamily: FONT, fontStyle: 'bold'
+        });
+        this.add.text(PBX + 120, PBY + 58, `"${data.subtexto || ''}"`, {
+            fontSize: '10px', fill: '#a0a0b8', fontFamily: FONT,
+            fontStyle: 'italic', wordWrap: { width: PBW - 130 }
+        });
 
-        // Separador
+        // ── Separador ─────────────────────────────────────────────
         const g = this.add.graphics();
-        g.lineStyle(1, 0x3DCD58, 0.3); g.lineBetween(80, 118, W - 80, 118);
+        const sep = (y) => { g.lineStyle(1, 0x2a2a4a, 1); g.lineBetween(40, y, W - 40, y); };
+        sep(146);
 
-        // Métricas de la reunión
-        this.add.text(W / 2, 126, 'MÉTRICAS DE LA REUNIÓN', {
-            fontSize: '10px', fill: '#7a7a8e', fontFamily: FONT
+        // ── Métricas del boss (3 barras compactas) ────────────────
+        this.add.text(W / 2, 152, 'MÉTRICAS DE LA REUNIÓN', {
+            fontSize: '9px', fill: '#4a4a6a', fontFamily: FONT, fontStyle: 'bold'
         }).setOrigin(0.5, 0);
 
-        const metrics = [
-            { label: 'Confianza del cliente:',  val: data.confianza     || 0 },
-            { label: 'Oportunidades generadas:', val: data.oportunidades || 0 },
-            { label: 'Calidad técnica:',         val: data.calidad       || 0 },
+        const mDefs = [
+            { label: 'Confianza del cliente:',     val: data.confianza     || 0 },
+            { label: 'Oportunidades detectadas:',  val: data.oportunidades || 0 },
+            { label: 'Calidad técnica:',            val: data.calidad       || 0 },
         ];
-        const BAR_X = W * 0.22, BAR_W = W * 0.56, BAR_H = 10;
-        metrics.forEach((m, i) => {
-            const Y = 148 + i * 32;
-            this.add.text(BAR_X, Y, m.label, { fontSize: '10px', fill: '#a0a0b8', fontFamily: FONT });
+        const BAR_LX = 44, BAR_X = 254, BAR_W = 456, BAR_H = 10;
+        mDefs.forEach((m, i) => {
+            const Y = 168 + i * 24;
+            this.add.text(BAR_LX, Y, m.label, { fontSize: '10px', fill: '#a0a0b8', fontFamily: FONT });
             const pct = Phaser.Math.Clamp(m.val / 100, 0, 1);
-            const col = pct > 0.6 ? 0x3DCD58 : pct > 0.35 ? 0xf0d020 : 0xe84057;
+            const col = m.val >= 70 ? 0x3DCD58 : m.val >= 40 ? 0xf0d020 : 0xe84057;
             const barBg = this.add.graphics();
-            barBg.fillStyle(0x2a2a3a); barBg.fillRect(BAR_X, Y + 14, BAR_W, BAR_H);
+            barBg.fillStyle(0x1e1e2e); barBg.fillRect(BAR_X, Y + 1, BAR_W, BAR_H);
             const bar = this.add.graphics();
-            bar.fillStyle(col); bar.fillRect(BAR_X, Y + 14, Math.floor(BAR_W * pct), BAR_H);
-            this.add.text(BAR_X + BAR_W + 6, Y + 14, `${m.val}%`, {
-                fontSize: '9px', fill: '#e8e8f0', fontFamily: FONT, fontStyle: 'bold'
+            bar.fillStyle(col); bar.fillRect(BAR_X, Y + 1, Math.floor(BAR_W * pct), BAR_H);
+            this.add.text(BAR_X + BAR_W + 8, Y, `${m.val}%`, {
+                fontSize: '10px', fill: '#e8e8f0', fontFamily: FONT, fontStyle: 'bold'
             });
         });
 
-        // Separador 2
-        g.lineBetween(80, 252, W - 80, 252);
+        sep(242);
 
-        // Score y bonus
-        this.add.text(W / 2, 260, `Puntuación total: ${data.score || 0} pts     Bonus estimado: ${data.bonus || 0} €`, {
-            fontSize: '12px', fill: '#f0a030', fontFamily: FONT, fontStyle: 'bold'
+        // ── Resumen global de la partida ──────────────────────────
+        const lc   = data.leadsCorrectTotal || 0;
+        const lt   = data.leadsTotal || 12;
+        const hr   = Math.round((lc / lt) * 100);
+        const sc   = data.scoreTotal || 0;
+        const bon  = data.bonusTotal || 0;
+
+        const COL1 = 44, COL2 = W / 2 + 20;
+
+        this.add.text(COL1, 250, `Leads acertados: ${lc}/${lt}`, {
+            fontSize: '11px', fill: '#a0a0b8', fontFamily: FONT
+        });
+        this.add.text(COL1, 268, `Hit rate global: ${hr}%`, {
+            fontSize: '11px', fill: hr >= 75 ? '#3DCD58' : '#e84057', fontFamily: FONT, fontStyle: 'bold'
+        });
+        this.add.text(COL2, 250, `Puntuación total: ${sc} pts`, {
+            fontSize: '11px', fill: '#a0a0b8', fontFamily: FONT
+        });
+
+        // Bonus grande naranja
+        this.add.text(W / 2, 286, `BONUS TOTAL ESTIMADO:  ${bon} €`, {
+            fontSize: '16px', fill: '#f0a030', fontFamily: FONT, fontStyle: 'bold'
         }).setOrigin(0.5, 0);
 
-        // Descripción del perfil
-        const desc = {
-            'TRUSTED ADVISOR':      'Enhorabuena. Eres el técnico que todo cliente quiere:\ncombinas excelencia técnica con visión comercial.',
-            'TÉCNICO EN DESARROLLO': 'Buen trabajo. Sigues creciendo como Trusted Advisor.\nRevisa los puntos donde puedes mejorar tu enfoque.',
-            'TÉCNICO INVISIBLE':    'Tienes margen de mejora. Recuerda: detectar leads\nes parte de tu valor como técnico de Schneider.'
-        }[data.perfil] || '';
-        this.add.text(W / 2, 286, desc, {
-            fontSize: '11px', fill: '#e8e8f0', fontFamily: FONT,
-            align: 'center', lineSpacing: 5, wordWrap: { width: W * 0.7 }
+        sep(314);
+
+        // ── Mensaje formativo ─────────────────────────────────────
+        this.add.text(W / 2, 322,
+            'Recuerda: como Trusted Advisor, tu misión es generar valor\npara el cliente Y para Schneider Electric.', {
+            fontSize: '11px', fill: '#3DCD58', fontFamily: FONT,
+            align: 'center', lineSpacing: 5, wordWrap: { width: W * 0.72 }
         }).setOrigin(0.5, 0);
 
-        // Schneider Electric branding
-        this.add.text(W / 2, 354, 'F2O Training Game — Schneider Electric Iberia 2026', {
-            fontSize: '9px', fill: '#3a3a5a', fontFamily: FONT
-        }).setOrigin(0.5, 0);
+        // Branding
+        this.add.text(W / 2, H - 20, 'F2O Training Game — Schneider Electric Iberia 2026', {
+            fontSize: '8px', fill: '#2a2a4a', fontFamily: FONT
+        }).setOrigin(0.5, 1);
 
-        // Blink ENTER
-        const blink = this.add.text(W / 2, 386, '▶  Pulsa ENTER para volver al inicio', {
+        // ── ENTER → TitleScene ────────────────────────────────────
+        const blink = this.add.text(W / 2, 374, '▶  Pulsa ENTER para volver al inicio', {
             fontSize: '12px', fill: '#6de882', fontFamily: FONT
         }).setOrigin(0.5, 0);
         this.tweens.add({ targets: blink, alpha: 0.15, duration: 550, yoyo: true, repeat: -1 });
 
         this.time.delayedCall(300, () => {
             this.input.keyboard.once('keydown-ENTER', () => {
-                currentWorld = 1;
-                playerHealth = 100;
+                currentWorld      = 1;
+                playerHealth      = 100;
+                totalScore        = 0;
+                totalBonus        = 0;
+                totalLeadsCorrect = 0;
                 this.scene.start('TitleScene');
             });
         });
