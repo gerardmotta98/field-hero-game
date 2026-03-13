@@ -712,6 +712,7 @@ class TitleScene extends Phaser.Scene {
         const FONT = 'Courier New, Courier, monospace';
 
         this.cameras.main.setBackgroundColor('#1a1a2e');
+        this.cameras.main.fadeIn(400, 0, 0, 0);
 
         // Línea decorativa superior
         const g = this.add.graphics();
@@ -760,10 +761,12 @@ class TitleScene extends Phaser.Scene {
                 totalScore        = 0;
                 totalBonus        = 0;
                 totalLeadsCorrect = 0;
-                this.scene.start('BriefingScene');
+                this.cameras.main.fadeOut(400, 0, 0, 0);
+                this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('BriefingScene'));
             });
             this.input.keyboard.once('keydown-B', () => {
-                this.scene.start('BossScene', { score: 0, bonus: 0, health: 100 });
+                this.cameras.main.fadeOut(400, 0, 0, 0);
+                this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('BossScene', { score: 0, bonus: 0, health: 100 }));
             });
         });
     }
@@ -785,6 +788,7 @@ class BriefingScene extends Phaser.Scene {
         const wd   = WORLD_DATA[currentWorld];
 
         this.cameras.main.setBackgroundColor('#1a1a2e');
+        this.cameras.main.fadeIn(400, 0, 0, 0);
 
         // Título
         this.add.text(W / 2, H * 0.10, `MUNDO ${currentWorld}: ${wd.nombre}`, {
@@ -827,7 +831,8 @@ class BriefingScene extends Phaser.Scene {
 
         this.time.delayedCall(200, () => {
             this.input.keyboard.once('keydown-ENTER', () => {
-                this.scene.start('GameScene');
+                this.cameras.main.fadeOut(400, 0, 0, 0);
+                this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('GameScene'));
             });
         });
     }
@@ -843,6 +848,7 @@ class GameScene extends Phaser.Scene {
     constructor() { super({ key: 'GameScene' }); }
 
     create(data) {
+        this.cameras.main.fadeIn(400, 0, 0, 0);
         const FONT = 'Courier New, Courier, monospace';
 
         // --------------------------------------------------------
@@ -931,7 +937,32 @@ class GameScene extends Phaser.Scene {
         this.keySpace = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
         this.keyE     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
         this.keyESC   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-        this.keyESC.on('down', () => { if (!this.levelEnded) this.scene.start('TitleScene'); });
+        this._paused = false;
+        this._pauseObjects = [];
+        this.keyESC.on('down', () => {
+            if (this.levelEnded) return;
+            if (!this._paused) {
+                this._paused = true;
+                this.physics.pause();
+                this.timerEvent.paused = true;
+                const PW = this.scale.width, PH = this.scale.height;
+                const pbg = this.add.graphics().setScrollFactor(0).setDepth(40);
+                pbg.fillStyle(0x000000, 0.72); pbg.fillRect(0, 0, PW, PH);
+                const pt1 = this.add.text(PW / 2, PH / 2 - 24, '\u23f8 PAUSA', {
+                    fontSize: '36px', fill: '#e8e8f0', fontFamily: FONT, fontStyle: 'bold'
+                }).setOrigin(0.5).setScrollFactor(0).setDepth(41);
+                const pt2 = this.add.text(PW / 2, PH / 2 + 18, 'Pulsa ESC para continuar', {
+                    fontSize: '13px', fill: '#7a7a8e', fontFamily: FONT
+                }).setOrigin(0.5).setScrollFactor(0).setDepth(41);
+                this._pauseObjects = [pbg, pt1, pt2];
+            } else {
+                this._paused = false;
+                this.physics.resume();
+                this.timerEvent.paused = false;
+                this._pauseObjects.forEach(o => { if (o.active) o.destroy(); });
+                this._pauseObjects = [];
+            }
+        });
 
         // --------------------------------------------------------
         //  TIMER — descuenta 1 segundo cada segundo
@@ -989,6 +1020,11 @@ class GameScene extends Phaser.Scene {
             fontSize: '14px', fill: '#e8e8f0', fontFamily: FONT, fontStyle: 'bold'
         }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(11);
 
+        // — Indicador de mundo (bajo el timer) —
+        this.add.text(400, 26, `MUNDO ${currentWorld}/3`, {
+            fontSize: '8px', fill: '#7a7a8e', fontFamily: FONT
+        }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(11);
+
         // — LEADS y BONUS (derecha) —
         this.leadsText = this.add.text(698, 9,
             `LEADS: ${this.leadsCollected}/4`, {
@@ -1021,9 +1057,11 @@ class GameScene extends Phaser.Scene {
                 this.leadsCorrect++;
                 this.score      += 100;
                 this.bonusEuros += 230;
-                // Popup "+230€" en la posición del lead recogido
+                // Flash verde sutil
+                this.cameras.main.flash(200, 61, 205, 88, 0.3);
+                // Popup "+230€" flotante
                 const pop = this.add.text(
-                    this._pendingLeadX, this._pendingLeadY - 10, '+230€', {
+                    this._pendingLeadX, this._pendingLeadY - 10, '+230\u20ac', {
                     fontSize: '13px', fill: '#f0a030',
                     fontFamily: 'Courier New, Courier, monospace', fontStyle: 'bold'
                 }).setOrigin(0.5).setDepth(9);
@@ -1032,10 +1070,41 @@ class GameScene extends Phaser.Scene {
                     duration: 1100, ease: 'Power2',
                     onComplete: () => { if (pop.active) pop.destroy(); }
                 });
+            } else {
+                // Texto "Oportunidad perdida" rojo flotante
+                const lost = this.add.text(
+                    this._pendingLeadX, this._pendingLeadY - 10, 'Oportunidad perdida', {
+                    fontSize: '12px', fill: '#e84057',
+                    fontFamily: 'Courier New, Courier, monospace', fontStyle: 'bold'
+                }).setOrigin(0.5).setDepth(9);
+                this.tweens.add({
+                    targets: lost, y: lost.y - 40, alpha: 0,
+                    duration: 1100, ease: 'Power2',
+                    onComplete: () => { if (lost.active) lost.destroy(); }
+                });
             }
             // Cuando se han interactuado todos los leads (correctos o fallados) → fin
             if (this.leadsAttempted >= this.leadsTotal) {
                 this.time.delayedCall(900, () => this._endLevel('complete'));
+            }
+        });
+
+        // ── Overlay con nombre del mundo (aparece y hace fadeout) ─────────
+        const WORLD_NAMES = { 1: 'SUBESTACIÓN LV', 2: 'DATA CENTRE', 3: 'SUBESTACIÓN HV' };
+        const W = this.scale.width, H = this.scale.height;
+        const wTitle = this.add.text(W / 2, H / 2 - 20, WORLD_NAMES[currentWorld], {
+            fontSize: '40px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold',
+            stroke: '#000000', strokeThickness: 6
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20).setAlpha(0);
+        this.tweens.add({
+            targets: wTitle, alpha: 1, duration: 350,
+            onComplete: () => {
+                this.time.delayedCall(900, () => {
+                    this.tweens.add({
+                        targets: wTitle, alpha: 0, duration: 700,
+                        onComplete: () => { if (wTitle.active) wTitle.destroy(); }
+                    });
+                });
             }
         });
     }
@@ -1490,18 +1559,21 @@ class GameScene extends Phaser.Scene {
         if (this.fallingArcTimer) this.fallingArcTimer.remove();
         this.player.setVelocity(0, 0);
         this.inspectPrompt.setVisible(false);
-        // Pequeña pausa antes de cambiar de escena para que el jugador vea el último estado
-        this.time.delayedCall(600, () => {
-            this.scene.start('SummaryScene', {
-                completed:      reason === 'complete',
-                leadsCollected: this.leadsCollected,
-                leadsCorrect:   this.leadsCorrect,
-                leadsTotal:     this.leadsTotal,
-                invalidTouched: this.invalidsTouched,
-                health:         Math.max(0, Math.round(this.health)),
-                timeLeft:       this.timeLeft,
-                score:          this.score,
-                bonus:          this.bonusEuros
+        // Pausa y fade antes de cambiar de escena
+        this.time.delayedCall(400, () => {
+            this.cameras.main.fadeOut(500, 0, 0, 0);
+            this.cameras.main.once('camerafadeoutcomplete', () => {
+                this.scene.start('SummaryScene', {
+                    completed:      reason === 'complete',
+                    leadsCollected: this.leadsCollected,
+                    leadsCorrect:   this.leadsCorrect,
+                    leadsTotal:     this.leadsTotal,
+                    invalidTouched: this.invalidsTouched,
+                    health:         Math.max(0, Math.round(this.health)),
+                    timeLeft:       this.timeLeft,
+                    score:          this.score,
+                    bonus:          this.bonusEuros
+                });
             });
         });
     }
@@ -1512,14 +1584,20 @@ class GameScene extends Phaser.Scene {
     _collectLead(lead) {
         if (!lead.alive) return;
         lead.alive = false;
-        lead.setVisible(false);
         this.inspectPrompt.setVisible(false);
-        // Guardar posición para el popup "+230€" tras el quiz
         this._pendingLeadX = lead.x;
         this._pendingLeadY = lead.y;
-        // Pausar GameScene y lanzar QuizScene como overlay
-        this.scene.pause('GameScene');
-        this.scene.launch('QuizScene', { quizId: lead.quizId });
+        this._pendingLead  = lead;
+        // Tween: crece y desaparece (300ms) → luego lanza el quiz
+        this.tweens.add({
+            targets: lead, scaleX: 2, scaleY: 2, alpha: 0,
+            duration: 300, ease: 'Power2',
+            onComplete: () => {
+                lead.setVisible(false);
+                this.scene.pause('GameScene');
+                this.scene.launch('QuizScene', { quizId: lead.quizId });
+            }
+        });
     }
 
     _touchInvalidLead(lead) {
@@ -1607,7 +1685,8 @@ class GameScene extends Phaser.Scene {
                 this.input.keyboard.once('keydown-ENTER', () => {
                     playerHealth = 100;
                     currentWorld = 1;
-                    this.scene.start('BriefingScene');
+                    this.cameras.main.fadeOut(400, 0, 0, 0);
+                    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('BriefingScene'));
                 });
             });
             this.levelEnded = true;
@@ -1702,6 +1781,7 @@ class SummaryScene extends Phaser.Scene {
         const FONT = 'Courier New, Courier, monospace';
 
         this.cameras.main.setBackgroundColor('#1a1a2e');
+        this.cameras.main.fadeIn(400, 0, 0, 0);
 
         // Título: usa el flag 'completed' que envía GameScene
         const titulo = data.completed ? '✅ MISIÓN COMPLETADA' : '⏰ TIEMPO AGOTADO';
@@ -1812,29 +1892,29 @@ class SummaryScene extends Phaser.Scene {
         //        no aprobado → reinicia el mismo mundo
         this.time.delayedCall(200, () => {
             this.input.keyboard.once('keydown-ENTER', () => {
-                if (aprobado) {
-                    // Acumular datos del mundo completado
-                    totalScore        += data.score;
-                    totalBonus        += data.bonus;
-                    totalLeadsCorrect += data.leadsCorrect;
-                    if (currentWorld < 3) {
-                        playerHealth = data.health;   // llevar la vida al siguiente mundo
-                        currentWorld++;
-                        this.scene.start('BriefingScene');
+                this.cameras.main.fadeOut(400, 0, 0, 0);
+                this.cameras.main.once('camerafadeoutcomplete', () => {
+                    if (aprobado) {
+                        totalScore        += data.score;
+                        totalBonus        += data.bonus;
+                        totalLeadsCorrect += data.leadsCorrect;
+                        if (currentWorld < 3) {
+                            playerHealth = data.health;
+                            currentWorld++;
+                            this.scene.start('BriefingScene');
+                        } else {
+                            playerHealth = 100;
+                            this.scene.start('BossScene', { health: data.health });
+                        }
                     } else {
-                        // Mundo 3 completado → reunión con el Facility Manager
-                        playerHealth = 100;
-                        this.scene.start('BossScene', { health: data.health });
+                        playerHealth      = 100;
+                        currentWorld      = 1;
+                        totalScore        = 0;
+                        totalBonus        = 0;
+                        totalLeadsCorrect = 0;
+                        this.scene.start('BriefingScene');
                     }
-                } else {
-                    // Fallo → resetear todo y volver al Mundo 1
-                    playerHealth      = 100;
-                    currentWorld      = 1;
-                    totalScore        = 0;
-                    totalBonus        = 0;
-                    totalLeadsCorrect = 0;
-                    this.scene.start('BriefingScene');
-                }
+                });
             });
         });
     }
@@ -2040,6 +2120,7 @@ class BossScene extends Phaser.Scene {
         const FONT = 'Courier New, Courier, monospace';
         this._FONT     = FONT;
         this._gameData = data || {};
+        this.cameras.main.fadeIn(400, 0, 0, 0);
 
         // Métricas — arrancan en 50
         this.conf = 50; this.opp = 50; this.qual = 50;
@@ -2134,14 +2215,8 @@ class BossScene extends Phaser.Scene {
         });
         this._redrawBars();
 
-        // ── Técnico (izquierda) ───────────────────────────────────────────────────
-        this.add.image(120, 218, 'tech_stand').setScale(1.8);
-        this.add.text(120, 232, 'TÚ', {
-            fontSize: '8px', fill: '#6de882', fontFamily: FONT, fontStyle: 'bold'
-        }).setOrigin(0.5);
-
-        // ── Facility Manager (derecha) ──────────────────────────────────────────
-        this._fmSprite = this.add.image(600, 170, 'fm_neutral').setScale(0.9);
+        // ── Facility Manager (izquierda) ─────────────────────────────────────────
+        this._fmSprite = this.add.image(200, 170, 'fm_neutral').setScale(0.9);
         if (this._fmSprite.displayHeight > 220) {
             this._fmSprite.setScale(0.9 * 220 / this._fmSprite.displayHeight);
         }
@@ -2149,8 +2224,8 @@ class BossScene extends Phaser.Scene {
         const fh = this._fmSprite.displayHeight + 6;
         const fmBorder = this.add.graphics();
         fmBorder.lineStyle(3, 0x1a1a2e, 1);
-        fmBorder.strokeRect(600 - fw / 2, 170 - fh / 2, fw, fh);
-        this.add.text(600, 170 + fh / 2 + 5, 'FACILITY MGR.', {
+        fmBorder.strokeRect(200 - fw / 2, 170 - fh / 2, fw, fh);
+        this.add.text(200, 170 + fh / 2 + 5, 'FACILITY MGR.', {
             fontSize: '8px', fill: '#f0a030', fontFamily: FONT, fontStyle: 'bold'
         }).setOrigin(0.5, 0);
 
@@ -2368,15 +2443,18 @@ class BossScene extends Phaser.Scene {
             subtexto = 'Sigue formándote, ¡el potencial está ahí!';
         }
 
-        this.scene.start('FinalScene', {
-            confianza:         c,
-            oportunidades:     o,
-            calidad:           q,
-            perfil, pColor, subtexto,
-            scoreTotal:        totalScore,
-            bonusTotal:        totalBonus,
-            leadsCorrectTotal: totalLeadsCorrect,
-            leadsTotal:        12
+        this.cameras.main.fadeOut(500, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+            this.scene.start('FinalScene', {
+                confianza:         c,
+                oportunidades:     o,
+                calidad:           q,
+                perfil, pColor, subtexto,
+                scoreTotal:        totalScore,
+                bonusTotal:        totalBonus,
+                leadsCorrectTotal: totalLeadsCorrect,
+                leadsTotal:        12
+            });
         });
     }
 }
@@ -2394,6 +2472,8 @@ class FinalScene extends Phaser.Scene {
         const W = 800, H = 450;
         const FONT = 'Courier New, Courier, monospace';
 
+        this.cameras.main.fadeIn(500, 0, 0, 0);
+
         // ── Fondo oscuro con destellos verdes ────────────────────
         const bg = this.add.graphics();
         bg.fillStyle(0x0a0a14); bg.fillRect(0, 0, W, H);
@@ -2407,7 +2487,7 @@ class FinalScene extends Phaser.Scene {
 
         // ── Título ────────────────────────────────────────────────
         this.add.text(W / 2, 7, '⚡  FIELD HERO — RESULTADOS FINALES  ⚡', {
-            fontSize: '18px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold'
+            fontSize: '22px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold'
         }).setOrigin(0.5, 0);
 
         // ── Sección perfil ────────────────────────────────────────
@@ -2515,7 +2595,8 @@ class FinalScene extends Phaser.Scene {
                 totalScore        = 0;
                 totalBonus        = 0;
                 totalLeadsCorrect = 0;
-                this.scene.start('TitleScene');
+                this.cameras.main.fadeOut(400, 0, 0, 0);
+                this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('TitleScene'));
             });
         });
     }
