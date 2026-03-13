@@ -1061,7 +1061,7 @@ class GameScene extends Phaser.Scene {
         // Leads inválidos
         this.invalidLeads = [];
         [
-            { x: 650,  y: 400, reason: '❌ LEAD INVÁLIDO: Las renovaciones de contratos NO cuentan como F2O' },
+            { x: 720,  y: 400, reason: '❌ LEAD INVÁLIDO: Las renovaciones de contratos NO cuentan como F2O' },
             { x: 1420, y: 265, reason: '❌ LEAD INVÁLIDO: Los leads de campañas marketing no son del detector' },
         ].forEach(ld => {
             const lead = this.add.sprite(ld.x, ld.y, 'lead_invalid');
@@ -1187,7 +1187,7 @@ class GameScene extends Phaser.Scene {
         this.invalidLeads = [];
         [
             { x: 450,  y: 400, reason: '❌ LEAD INVÁLIDO: El contrato ya cubre las piezas' },
-            { x: 1570, y: 400, reason: '❌ LEAD INVÁLIDO: Leads del CCC/ISSR no cuentan como F2O' },
+            { x: 1640, y: 400, reason: '❌ LEAD INVÁLIDO: Leads del CCC/ISSR no cuentan como F2O' },
         ].forEach(ld => {
             const lead = this.add.sprite(ld.x, ld.y, 'lead_invalid');
             lead.reason = ld.reason;
@@ -1331,8 +1331,8 @@ class GameScene extends Phaser.Scene {
         this.invalidLeads = [];
         [
             { x: 620,  y: 400, reason: '❌ LEAD INVÁLIDO: Renovaciones de contratos NO cuentan como F2O' },
-            { x: 1550, y: 400, reason: '❌ LEAD INVÁLIDO: Sin confirmación del cliente a más de 1 año' },
-            { x: 2000, y: 400, reason: '❌ LEAD INVÁLIDO: Lead ya existe en bFS — duplicado no válido' },
+            { x: 1440, y: 258, reason: '❌ LEAD INVÁLIDO: Sin confirmación del cliente a más de 1 año' },
+            { x: 1600, y: 290, reason: '❌ LEAD INVÁLIDO: Lead ya existe en bFS — duplicado no válido' },
             { x: 2300, y: 400, reason: '❌ LEAD INVÁLIDO: Lead proveniente de campaña de marketing' },
         ].forEach(ld => {
             const lead = this.add.sprite(ld.x, ld.y, 'lead_invalid');
@@ -1561,7 +1561,7 @@ class GameScene extends Phaser.Scene {
             if (this.health <= 0) { this.health = 0; this._endLevel('gameover'); }
         }
         if (this.inElectric) {
-            this.health -= 0.8;   // arco HV — el más dañino
+            this.health -= 10;    // arco HV — 10% de vida por frame de contacto
             if (this.health <= 0) { this.health = 0; this._endLevel('gameover'); }
         }
         // Tinte del jugador según peligro activo
