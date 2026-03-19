@@ -202,6 +202,7 @@ let playerHealth      = 100;   // persiste entre mundos; se resetea al volver al
 let totalScore        = 0;     // acumulado de los 3 mundos
 let totalBonus        = 0;     // bonus € acumulado
 let totalLeadsCorrect = 0;     // leads acertados acumulados (máx 12)
+let bgMusic           = null;  // referencia global a la música de fondo
 
 // ================================================================
 //  FIELD HERO — La Ruta del Técnico
@@ -224,6 +225,10 @@ let totalLeadsCorrect = 0;     // leads acertados acumulados (máx 12)
 // ================================================================
 class BootScene extends Phaser.Scene {
     constructor() { super({ key: 'BootScene' }); }
+
+    preload() {
+        this.load.audio('soundtrack', 'Field Hero Soundtrack.mp3');
+    }
 
     create() {
         let loadedCount = 0;
@@ -707,6 +712,14 @@ class TitleScene extends Phaser.Scene {
 
     create() {
         if (this.textures.exists('boss_bg')) console.log('✅ Boss assets loaded OK');
+
+        // ── MÚSICA DE FONDO ─────────────────────────────────────────
+        // Se arranca una sola vez y persiste en bucle por todo el juego
+        if (!bgMusic || !bgMusic.isPlaying) {
+            bgMusic = this.sound.add('soundtrack', { loop: true, volume: 0.5 });
+            bgMusic.play();
+        }
+
         const W = this.scale.width;
         const H = this.scale.height;
         const FONT = 'Courier New, Courier, monospace';
@@ -747,6 +760,10 @@ class TitleScene extends Phaser.Scene {
         this.add.text(W - 10, H - 8, 'v1.0 — Iteración 1', {
             fontSize: '9px', fill: '#3a3a5a', fontFamily: FONT
         }).setOrigin(1, 1);
+
+        this.add.text(W / 2, H - 10, 'Created by Gerard Motta Rodriguez', {
+            fontSize: '16px', fill: '#3DCD58', fontFamily: FONT, fontStyle: 'bold'
+        }).setOrigin(0.5, 1);
 
         // [DEV] Shortcut Boss — eliminar antes del evento
         this.add.text(10, H - 8, '[DEV] B → Boss directo', {
